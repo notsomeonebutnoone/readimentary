@@ -1,7 +1,28 @@
 # Readimentary
 
-Readimentary is a React + Vite web app for RSVP (Rapid Serial Visual Presentation) reading.
-It lets you upload a PDF, extract its text, split content into chapters, and read one word at a time at controlled speed (WPM) with ORP (Optimal Recognition Point) highlighting.
+<p align="center">
+  <img alt="React" src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white">
+  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/License-Not%20Set-lightgrey">
+</p>
+
+<p align="center">
+  <b>RSVP reading for speed, focus, and flow.</b><br/>
+  Upload PDFs, detect chapters, and read one word at a time with ORP highlighting.
+</p>
+
+---
+
+## Quick Links
+
+- [Highlights](#highlights)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [How to Use](#how-to-use)
+- [Data and Privacy](#data--privacy)
+- [Known Limitations](#known-limitations)
+- [Troubleshooting](#troubleshooting)
 
 ## Highlights
 
@@ -14,14 +35,16 @@ It lets you upload a PDF, extract its text, split content into chapters, and rea
   - PDF blobs in `IndexedDB`
 - Landing page + interactive demo reader.
 
+> Tip: This project runs fully in the browser for the core reading flow.
+
 ## Tech Stack
 
-- React 19
-- Vite 7
-- Tailwind CSS 4
-- `lucide-react` icons
-- `pdfjs-dist` / PDF.js for parsing and rendering
-- `react-scroll` for landing-page section navigation
+| Layer | Tools |
+|---|---|
+| Frontend | React 19, Vite 7 |
+| Styling | Tailwind CSS 4 |
+| PDF Processing | `pdfjs-dist` / PDF.js |
+| UI Utilities | `lucide-react`, `react-scroll` |
 
 ## Project Structure
 
@@ -75,6 +98,8 @@ npm run preview
 npm run lint
 ```
 
+---
+
 ## How to Use
 
 1. Start the app and enter the reading workspace from the landing page.
@@ -96,6 +121,8 @@ Readimentary currently stores user data locally in your browser:
 
 No authentication backend is wired in this version; login UI is currently presentational.
 
+---
+
 ## AI Integration Notes
 
 The app includes Gemini helper functions for chapter summary/flashcards in `src/App.jsx`.
@@ -106,12 +133,16 @@ If you plan to use this in production, do not keep API keys in client code.
   - move AI calls to a backend service
   - keep real keys in server-side environment variables
 
+---
+
 ## Known Limitations
 
 - Chapter detection is heuristic-based and may need manual tuning for some PDFs.
 - Complex PDFs (scanned pages, unusual layouts) may extract text imperfectly.
 - Some UI/auth areas are prototype-level and not backed by server logic.
 - A nested git entry named `readimentary` exists in repo history (mode `160000`), which may behave like a submodule depending on your clone state.
+
+---
 
 ## Troubleshooting
 
@@ -131,17 +162,6 @@ From `package.json`:
 - `npm run build` -> create production build
 - `npm run preview` -> preview production build
 - `npm run lint` -> run ESLint
-
-## Contributing
-
-1. Fork or clone the repository.
-2. Create a feature branch.
-3. Make focused commits with clear messages.
-4. Run lint/build locally before opening a PR.
-5. Open a pull request with:
-   - what changed
-   - why it changed
-   - how it was tested
 
 ## License
 
