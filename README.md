@@ -1,15 +1,30 @@
 # Readimentary
 
 <p align="center">
-  <img alt="React" src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB">
-  <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white">
-  <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white">
-  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
+  <a href="https://react.dev/" target="_blank" rel="noreferrer">
+    <img alt="React" src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB">
+  </a>
+  <a href="https://vite.dev/" target="_blank" rel="noreferrer">
+    <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white">
+  </a>
+  <a href="https://tailwindcss.com/" target="_blank" rel="noreferrer">
+    <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white">
+  </a>
+  <a href="./LICENSE">
+    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
+  </a>
 </p>
 
 <p align="center">
   <b>RSVP reading for speed, focus, and flow.</b><br/>
   Upload PDFs, detect chapters, and read one word at a time with ORP highlighting.
+</p>
+
+<p align="center">
+  <a href="#-getting-started">🚀 Quick Start</a> •
+  <a href="#-how-to-use">📖 Usage</a> •
+  <a href="#-scripts">📜 Scripts</a> •
+  <a href="#-license">📄 License</a>
 </p>
 
 ---
@@ -36,6 +51,15 @@
 - Landing page + interactive demo reader.
 
 > Tip: This project runs fully in the browser for the core reading flow.
+
+## 🎛️ At a Glance
+
+| Mode | Description | Status |
+|---|---|---|
+| Library | Upload/select books and manage your reading collection | ✅ Ready |
+| Chapters | Auto-detected chapter list with progress tracking | ✅ Ready |
+| Reader | RSVP playback with ORP focus and WPM controls | ✅ Ready |
+| AI Helpers | Summary / flashcard stubs for chapter context | ⚠️ Prototype |
 
 ## 🧰 Tech Stack
 
@@ -108,6 +132,10 @@ npm run lint
 4. Use play/pause and adjust WPM as needed.
 5. Optionally tune typography and ORP highlight in settings.
 
+### 🧭 Reading Flow
+
+`Upload PDF` -> `Parse Text` -> `Detect Chapters` -> `Start RSVP` -> `Track Progress`
+
 ## 🔒 Data & Privacy
 
 Readimentary currently stores user data locally in your browser:
@@ -162,6 +190,15 @@ From `package.json`:
 - `npm run build` -> create production build
 - `npm run preview` -> preview production build
 - `npm run lint` -> run ESLint
+
+## 🛣️ Roadmap
+
+- [x] Local PDF upload and chapter parsing
+- [x] RSVP reader with adjustable WPM and ORP
+- [x] Persisted local library and reading progress
+- [ ] Server-backed authentication
+- [ ] Backend AI integration (secure API keys)
+- [ ] Multi-device sync
 
 ## 📄 License
 
