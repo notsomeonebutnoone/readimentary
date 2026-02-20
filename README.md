@@ -4,7 +4,7 @@
   <img alt="React" src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white">
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white">
-  <img alt="License" src="https://img.shields.io/badge/License-Not%20Set-lightgrey">
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg">
 </p>
 
 <p align="center">
@@ -16,15 +16,15 @@
 
 ## Quick Links
 
-- [Highlights](#highlights)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [How to Use](#how-to-use)
-- [Data and Privacy](#data--privacy)
-- [Known Limitations](#known-limitations)
-- [Troubleshooting](#troubleshooting)
+- [✨ Highlights](#-highlights)
+- [🧰 Tech Stack](#-tech-stack)
+- [🚀 Getting Started](#-getting-started)
+- [📖 How to Use](#-how-to-use)
+- [🔒 Data and Privacy](#-data--privacy)
+- [⚠️ Known Limitations](#-known-limitations)
+- [🛠️ Troubleshooting](#-troubleshooting)
 
-## Highlights
+## ✨ Highlights
 
 - PDF upload and text extraction in-browser (no backend required).
 - RSVP reading engine with play/pause, reset, and adjustable WPM.
@@ -37,7 +37,7 @@
 
 > Tip: This project runs fully in the browser for the core reading flow.
 
-## Tech Stack
+## 🧰 Tech Stack
 
 | Layer | Tools |
 |---|---|
@@ -46,7 +46,7 @@
 | PDF Processing | `pdfjs-dist` / PDF.js |
 | UI Utilities | `lucide-react`, `react-scroll` |
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
 src/
@@ -59,7 +59,7 @@ src/
   index.css                    # Global styles + motion utilities
 ```
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
@@ -100,7 +100,7 @@ npm run lint
 
 ---
 
-## How to Use
+## 📖 How to Use
 
 1. Start the app and enter the reading workspace from the landing page.
 2. Upload a PDF from the library screen.
@@ -108,7 +108,7 @@ npm run lint
 4. Use play/pause and adjust WPM as needed.
 5. Optionally tune typography and ORP highlight in settings.
 
-## Data & Privacy
+## 🔒 Data & Privacy
 
 Readimentary currently stores user data locally in your browser:
 
@@ -123,7 +123,7 @@ No authentication backend is wired in this version; login UI is currently presen
 
 ---
 
-## AI Integration Notes
+## 🤖 AI Integration Notes
 
 The app includes Gemini helper functions for chapter summary/flashcards in `src/App.jsx`.
 If you plan to use this in production, do not keep API keys in client code.
@@ -135,7 +135,7 @@ If you plan to use this in production, do not keep API keys in client code.
 
 ---
 
-## Known Limitations
+## ⚠️ Known Limitations
 
 - Chapter detection is heuristic-based and may need manual tuning for some PDFs.
 - Complex PDFs (scanned pages, unusual layouts) may extract text imperfectly.
@@ -144,7 +144,7 @@ If you plan to use this in production, do not keep API keys in client code.
 
 ---
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 - Push rejected on GitHub:
   - run `git pull --rebase origin main`
@@ -154,7 +154,7 @@ If you plan to use this in production, do not keep API keys in client code.
   - `git config user.name "Your Name"`
   - `git config user.email "you@example.com"`
 
-## Scripts
+## 📜 Scripts
 
 From `package.json`:
 
@@ -163,7 +163,6 @@ From `package.json`:
 - `npm run preview` -> preview production build
 - `npm run lint` -> run ESLint
 
-## License
+## 📄 License
 
-No license file is currently defined in this repository.
-Add a `LICENSE` file (for example MIT) if you want explicit usage terms.
+This project is licensed under the MIT License.
