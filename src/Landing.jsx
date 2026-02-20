@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { BookOpen, ArrowRight, Check, Zap, Shield, Clock, HelpCircle, User, X, ChevronDown, Lock, Globe, Cpu, Menu, Play, Pause, RotateCcw } from 'lucide-react';
+import { BookOpen, ArrowRight, Check, Zap, Shield, HelpCircle, User, X, ChevronDown, Lock, Globe, Cpu, Menu, Play, Pause, RotateCcw } from 'lucide-react';
 import { Link as ScrollLink } from 'react-scroll';
-import ScrollStack, { ScrollStackItem } from './ScrollStack';
 
 // --- ICONS (Auth) ---
 const GoogleIcon = () => (
@@ -94,9 +93,10 @@ export default function Landing({ onEnter = () => {} }) {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [featuresHighlighted, setFeaturesHighlighted] = useState(false);
+  const [activeSectionId, setActiveSectionId] = useState('hero');
+  const [loopCharacterIndex, setLoopCharacterIndex] = useState(0);
 
   // Sample reader state
-  const [sampleWords, setSampleWords] = useState([]);
   const [sampleIndex, setSampleIndex] = useState(0);
   const [samplePlaying, setSamplePlaying] = useState(false);
 
@@ -113,6 +113,35 @@ export default function Landing({ onEnter = () => {} }) {
   const bookParticles = useMemo(() => createParticles(8, [140, 200]), []);
   const tabletParticles = useMemo(() => createParticles(6, [140, 200]), []);
   const scrollParticles = useMemo(() => createParticles(6, [140, 200]), []);
+  const sectionCharacterMap = useMemo(() => ({
+    hero: null,      // Loop animation in hero
+    features: 1,     // Blue/teal character
+    pricing: 2,      // Pink character
+    faq: 0,          // Amber character
+    docs: 1          // Blue/teal character
+  }), []);
+  const sectionOrder = useMemo(() => ['hero', 'features', 'pricing', 'faq', 'docs'], []);
+  const controlledCharacterIndex = sectionCharacterMap[activeSectionId];
+  const centerCharacterIndex = controlledCharacterIndex ?? loopCharacterIndex;
+  const sectionDepth = Math.max(0, sectionOrder.indexOf(activeSectionId));
+
+  const getCharacterTransformStyle = (characterIndex) => {
+    const offsets = {
+      0: { x: 0, y: -8, scale: 1.58, opacity: 1, z: 40 },
+      1: { x: 156, y: 12, scale: 1.36, opacity: 0.72, z: 20 },
+      2: { x: -156, y: 14, scale: 1.3, opacity: 0.64, z: 10 }
+    };
+
+    const delta = (characterIndex - centerCharacterIndex + 3) % 3;
+    const pose = offsets[delta];
+    const yScrollDrift = sectionDepth * 24;
+
+    return {
+      transform: `translate(-50%, -50%) translate(${pose.x}px, ${pose.y + yScrollDrift}px) scale(${pose.scale})`,
+      opacity: pose.opacity,
+      zIndex: pose.z
+    };
+  };
 
   const animations = `
     @keyframes float-element { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
@@ -167,16 +196,20 @@ export default function Landing({ onEnter = () => {} }) {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-4px); }
     }
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
     .animate-boot-1 { animation: charBoot 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both; }
     .animate-boot-2 { animation: charBoot 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s both; }
     .animate-boot-3 { animation: charBoot 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.7s both; }
     .animate-nav-in { animation: navSlideIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
     .animate-nav-item-in { animation: navItemIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    .animate-sample-in { animation: samplePanelIn 1.05s cubic-bezier(0.2, 0.8, 0.2, 1) 0.8s both; }
+    .animate-sample-in { animation: samplePanelIn 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s both; }
     .animate-sample-panel {
       animation:
-        samplePanelIn 1.05s cubic-bezier(0.2, 0.8, 0.2, 1) 0.8s both,
-        samplePanelGlow 4.2s ease-in-out 1.9s infinite;
+        samplePanelIn 0.72s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s both,
+        samplePanelGlow 4.2s ease-in-out 0.9s infinite;
     }
     .animate-sample-rail { animation: sampleRailPulse 2.2s ease-in-out infinite; }
     .animate-sample-word { animation: sampleWordPop 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -184,6 +217,12 @@ export default function Landing({ onEnter = () => {} }) {
     .animate-sample-eq { animation: sampleEq 0.9s ease-in-out infinite; transform-origin: bottom; }
     .animate-feature-card-in { animation: featureCardIn 0.85s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
     .animate-feature-card-float { animation: featureCardFloat 4.6s ease-in-out infinite; }
+    .marquee-track {
+      display: flex;
+      width: max-content;
+      animation: marquee 24s linear infinite;
+      will-change: transform;
+    }
     section[id] { scroll-margin-top: 100px; }
   `;
 
@@ -220,13 +259,57 @@ export default function Landing({ onEnter = () => {} }) {
     return () => cancelAnimationFrame(breatheFrameRef.current);
   }, []);
 
+  // Hero loop: center swaps amber -> blue -> pink continuously
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLoopCharacterIndex((prev) => (prev + 1) % 3);
+    }, 2300);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Section mapping: character focus follows scrolling context
+  useEffect(() => {
+    const sectionIds = ['hero', 'features', 'pricing', 'faq', 'docs'];
+    const scrollContainer = document.getElementById('landing-scroll-container');
+    const sections = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target?.id) {
+          setActiveSectionId(visible[0].target.id);
+        }
+      },
+      {
+        root: scrollContainer || null,
+        threshold: [0.2, 0.35, 0.5, 0.7],
+        rootMargin: '-18% 0px -45% 0px'
+      }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
   // Sample reader setup
   const sampleText = "Rapid Serial Visual Presentation (RSVP) is a digital reading technique that flashes words sequentially in a single, fixed location on a screen. By centering each word on its Optimal Recognition Point (ORP), RSVP eliminates the need for saccades—the jerky eye movements required to scan a traditional page. This approach effectively bypasses subvocalization (the habit of saying words in your head) and prevents regression, the subconscious tendency to re-read previous lines. While it significantly boosts speed and focus on small screens, users often find it better suited for straightforward informational text rather than dense technical material or literature that requires deep reflection.";
+  const sampleWords = useMemo(
+    () => sampleText.split(' ').map(word => ({ text: word, orp: Math.floor(word.length / 2) })),
+    [sampleText]
+  );
 
-  useEffect(() => {
-    const words = sampleText.split(' ').map(word => ({ text: word, orp: Math.floor(word.length / 2) }));
-    setSampleWords(words);
-  }, []);
+  const comparisonGraphData = [
+    { label: 'Focus Retention', traditional: 42, rsvp: 82 },
+    { label: 'Eye Movement Load', traditional: 88, rsvp: 28 },
+    { label: 'Speed Potential', traditional: 35, rsvp: 78 },
+    { label: 'Mobile Suitability', traditional: 48, rsvp: 86 }
+  ];
 
   useEffect(() => {
     if (!samplePlaying || sampleIndex >= sampleWords.length) return;
@@ -285,28 +368,6 @@ export default function Landing({ onEnter = () => {} }) {
     { name: "Lifetime Access", price: "10", color: "teal", id: "pricing", features: ["One-Time Payment", "Upload Unlimited Books"] }
   ];
 
-  const featureCards = [
-    {
-      title: "1. Eliminates Subvocalization",
-      body: "Most people say words in their head as they read. This limits reading speed to speaking speed. RSVP readers can push you past this barrier by forcing faster visual recognition."
-    },
-    {
-      title: "2. Prevents Regression",
-      body: "Regression is the habit of your eyes skipping back to previous words or lines. Since each previous word disappears instantly in RSVP, you cannot look back, which keeps momentum forward and improves focus."
-    },
-    {
-      title: "3. Reduces Eye Fatigue (Saccades)",
-      body: "Traditional reading relies on tiny jerky eye movements called saccades. RSVP keeps your eyes fixed on a single ORP, so the text moves instead of your gaze."
-    },
-    {
-      title: "4. Drastically Increases Speed",
-      body: "By removing both eye movement overhead and subvocalization limits, many users can double or triple reading speed and comfortably reach 400 to 600 WPM with practice."
-    },
-    {
-      title: "5. Ideal for Small Screens",
-      body: "Reading long-form content on small screens can be difficult. RSVP solves much of the scrolling problem by presenting content in a compact fixed window."
-    }
-  ];
 
   const faqs = [
     { q: "What is RSVP reading?", a: "RSVP (Rapid Serial Visual Presentation) shows one word at a time in a fixed position so you can reduce eye movement and maintain reading flow." },
@@ -314,23 +375,16 @@ export default function Landing({ onEnter = () => {} }) {
     { q: "Is this good for every type of reading?", a: "RSVP is best for linear content like articles, essays, and nonfiction. For dense math, code, or poetry, traditional reading may still be better." }
   ];
 
-  const readingWorkflow = [
-    { title: "Upload", body: "Import your PDF in one click and let the app extract text and chapter boundaries." },
-    { title: "Tune", body: "Adjust WPM, font size, and ORP highlighting to match your comfort and focus." },
-    { title: "Read", body: "Follow chapter progress, continue where you left off, and build reading stamina." }
-  ];
-
-  const useCases = [
-    { title: "Students", body: "Move through readings faster before lectures and exams." },
-    { title: "Founders", body: "Process reports, market docs, and briefs in less time." },
-    { title: "Researchers", body: "Scan long papers quickly to locate key sections." },
-    { title: "Lifelong Readers", body: "Build a daily reading habit with less distraction." }
-  ];
-
   const testimonials = [
     { quote: "I stopped bouncing between lines and finally stay locked in.", name: "Maya L.", role: "Product Designer" },
     { quote: "The chapter flow and WPM controls make this my daily reading app.", name: "Chris D.", role: "CS Student" },
     { quote: "Perfect for nonfiction and docs when I need speed and focus.", name: "Jordan R.", role: "Operations Lead" }
+  ];
+
+  const readingSignals = [
+    { value: "< 2 min", label: "Average setup", note: "Upload to first chapter in a single flow." },
+    { value: "300-600", label: "Target WPM", note: "Tune speed based on content difficulty." },
+    { value: "100%", label: "Local-first", note: "Your library and progress stay in-browser." }
   ];
 
   const planStyles = {
@@ -354,6 +408,14 @@ export default function Landing({ onEnter = () => {} }) {
   return (
     <div ref={containerRef} className="relative min-h-screen bg-[#050505] overflow-x-hidden font-sans text-white scroll-smooth">
       <style>{animations}</style>
+      <div
+        className="absolute inset-0 z-0 opacity-[0.14] pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle at center, #ffffff 1px, transparent 1px)',
+          backgroundSize: '40px 40px'
+        }}
+      />
+      <div className="absolute inset-0 z-0 pointer-events-none bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(5,5,5,0.2)_30%,rgba(5,5,5,0.9)_100%)]" />
 
       {/* --- FIXED VIEWPORT WRAPPER (CENTERING ANCHOR) --- */}
       <div className="fixed top-0 left-0 w-full flex justify-center z-[100]">
@@ -403,18 +465,39 @@ export default function Landing({ onEnter = () => {} }) {
           <div className="w-[800px] h-[600px] bg-gradient-to-r from-pink-600/5 via-amber-600/5 to-teal-600/5 rounded-full blur-[120px] opacity-30" />
         </div>
 
+        <div className="w-full max-w-7xl px-6 mb-10 flex flex-col items-center text-center z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] uppercase tracking-widest mb-6">
+            <Zap size={12} /> Meet The New Engine
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter leading-[1.16] pb-2 text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-white/40 mb-6">
+            Read at the speed of thought.
+          </h1>
+          <p className="max-w-3xl text-white/55 text-sm md:text-base tracking-wide leading-relaxed">
+            Eliminate subvocalization and eye fatigue. Upload any PDF, map chapters automatically, and push your reading rhythm with a focused RSVP interface designed for deep throughput.
+          </p>
+        </div>
+
         <div className="relative mb-12 w-full max-w-7xl px-6 flex flex-col lg:flex-row items-center justify-center gap-10">
           <div
-            className="relative w-full max-w-[700px] h-[450px] flex justify-center items-center"
-            style={{ transform: `translate(${(mousePos.x - 0.5) * 12 + 280}px, ${(mousePos.y - 0.5) * 8}px)` }}
+            className="relative w-full max-w-[700px] h-[500px] flex justify-center items-center"
+            style={{ transform: `translate(${(mousePos.x - 0.5) * 12}px, ${(mousePos.y - 0.5) * 8}px)` }}
           >
-            <div className="absolute -translate-x-190 translate-y-[-5px] scale-[1.5] z-10 animate-boot-1">
+            <div
+              className="absolute top-1/2 left-1/2 transition-all duration-700 ease-out"
+              style={getCharacterTransformStyle(2)}
+            >
               <svg width="340" height="420" viewBox="0 0 340 420"><g ref={oracleFigureRef} style={{ transformOrigin: 'center 200px' }}><ellipse cx="170" cy="380" rx="80" ry="10" fill="#000" opacity="0.4" /><g transform="translate(0, 10)"><path d="M110 160 L230 160 L250 380 L90 380 Z" fill="#1a1216" /><path d="M165 160 L175 160 L185 380 L155 380 Z" fill="#2d1a22" /><rect x="100" y="160" width="140" height="40" rx="10" fill="#2d1a22" /></g><rect x="110" y="80" width="120" height="90" rx="15" fill="#2d1a22" /><rect x="130" y="100" width="80" height="70" rx="8" fill="#050505" /><rect x="150" y="125" width="40" height="6" fill="#f472b6" style={{ animation: 'pulse-pink 3.2s infinite ease-in-out', filter: 'drop-shadow(0 0 4px #f472b6)' }} /><g style={{ animation: 'float-element 3.5s ease-in-out infinite' }}><rect x="130" y="210" width="80" height="55" rx="2" fill="#f472b615" stroke="#f472b6" strokeWidth="0.5" /><g fill="#f472b6">{tabletParticles.map(p => (<rect key={p.id} x={p.x} y="210" width="2" height="2" opacity="0" style={{ '--drift': `${p.drift}px`, animation: 'magic-rise 2.5s infinite linear', animationDelay: `${p.delay}s` }} />))}</g></g></g></svg>
             </div>
-            <div className="absolute -translate-x-90 translate-y-[-5px] scale-[1.5] z-10 animate-boot-2">
+            <div
+              className="absolute top-1/2 left-1/2 transition-all duration-700 ease-out"
+              style={getCharacterTransformStyle(1)}
+            >
               <svg width="340" height="420" viewBox="0 0 340 420"><g ref={backFigureRef} style={{ transformOrigin: 'center 200px' }}><ellipse cx="170" cy="380" rx="80" ry="10" fill="#000" opacity="0.4" /><g transform="translate(0, 10)"><path d="M110 160 L230 160 L250 380 L90 380 Z" fill="#121212" /><path d="M165 160 L175 160 L185 380 L155 380 Z" fill="#1a1a1a" /><rect x="100" y="160" width="140" height="40" rx="10" fill="#1a1a1a" /></g><rect x="110" y="80" width="120" height="90" rx="15" fill="#1a1a1a" /><rect x="130" y="100" width="80" height="70" rx="8" fill="#050505" /><rect x="150" y="125" width="40" height="6" fill="#2dd4bf" style={{ animation: 'pulse-teal 4s infinite ease-in-out' }} /><g style={{ animation: 'float-element 4s ease-in-out infinite' }}><rect x="125" y="205" width="90" height="8" rx="4" fill="#0f172a" stroke="#2dd4bf" strokeWidth="0.5" /><rect x="125" y="275" width="90" height="8" rx="4" fill="#0f172a" stroke="#2dd4bf" strokeWidth="0.5" /><rect x="135" y="213" width="70" height="62" fill="#2dd4bf" opacity="0.1" /><g fill="#2dd4bf">{scrollParticles.map(p => (<rect key={p.id} x={p.x} y="213" width="2" height="2" opacity="0" style={{ '--drift': `${p.drift}px`, animation: 'magic-rise 2.8s infinite linear', animationDelay: `${p.delay}s` }} />))}</g></g></g></svg>
             </div>
-            <div className="absolute -translate-x-140 translate-y-[-5px] scale-[1.7] z-20 animate-boot-3">
+            <div
+              className="absolute top-1/2 left-1/2 transition-all duration-700 ease-out"
+              style={getCharacterTransformStyle(0)}
+            >
               <svg width="340" height="420" viewBox="0 0 340 420"><g ref={mainFigureRef} style={{ transformOrigin: 'center 400px' }}><ellipse cx="170" cy="380" rx="80" ry="10" fill="#000" opacity="0.6" /><g transform="translate(0, 10)"><path d="M110 160 L230 160 L250 380 L90 380 Z" fill="#171717" /><path d="M165 160 L175 160 L185 380 L155 380 Z" fill="#222" /><rect x="100" y="160" width="140" height="40" rx="10" fill="#262626" /></g><rect x="110" y="80" width="120" height="90" rx="15" fill="#262626" /><rect x="130" y="100" width="80" height="70" rx="8" fill="#0a0a0a" /><rect x="150" y="125" width="40" height="6" fill="#fbbf24" style={{ animation: 'scan-eyes 5s infinite ease-in-out' }} /><g style={{ animation: 'float-element 3s ease-in-out infinite' }}><rect x="130" y="210" width="80" height="50" rx="2" fill="#78350f" /><rect x="135" y="215" width="70" height="40" rx="1" fill="#fef3c7" /><g fill="#fbbf24">{bookParticles.map((p) => (<rect key={p.id} x={p.x} y="210" width={p.size} height={p.size} opacity="0" style={{ '--drift': `${p.drift}px`, animation: `magic-rise ${p.duration}s infinite ease-out`, animationDelay: `${p.delay}s` }} />))}</g></g></g></svg>
             </div>
           </div>
@@ -467,6 +550,23 @@ export default function Landing({ onEnter = () => {} }) {
         </div>
       </section>
 
+      <div className="w-full border-y border-white/10 bg-white/[0.02] py-5 backdrop-blur-sm overflow-hidden">
+        <div className="flex items-center w-max">
+          <div className="marquee-track gap-12 items-center text-[11px] font-mono text-white/40 uppercase tracking-widest pr-12">
+            <span><Check size={14} className="inline text-amber-500 mr-2" /> Local-First Architecture</span>
+            <span><Zap size={14} className="inline text-teal-500 mr-2" /> 600+ WPM Achievable</span>
+            <span><Shield size={14} className="inline text-pink-500 mr-2" /> Zero Data Tracking</span>
+            <span><Check size={14} className="inline text-amber-500 mr-2" /> Browser Native Engine</span>
+          </div>
+          <div className="marquee-track gap-12 items-center text-[11px] font-mono text-white/40 uppercase tracking-widest pr-12" aria-hidden="true">
+            <span><Check size={14} className="inline text-amber-500 mr-2" /> Local-First Architecture</span>
+            <span><Zap size={14} className="inline text-teal-500 mr-2" /> 600+ WPM Achievable</span>
+            <span><Shield size={14} className="inline text-pink-500 mr-2" /> Zero Data Tracking</span>
+            <span><Check size={14} className="inline text-amber-500 mr-2" /> Browser Native Engine</span>
+          </div>
+        </div>
+      </div>
+
       <section id="features" className="py-24 border-t border-white/5">
         <div
           className={`w-full transition-all duration-500 ${
@@ -477,74 +577,81 @@ export default function Landing({ onEnter = () => {} }) {
             <SectionHeader title="Features" subtitle="Why RSVP improves reading flow" />
           </div>
 
-          <ScrollStack
-            className="scroll-stack-window"
-            useWindowScroll
-            scrollContainerId="landing-scroll-container"
-            itemDistance={80}
-            itemScale={0.04}
-            itemStackDistance={24}
-            baseScale={0.9}
-            blurAmount={1.6}
-          >
-            {featureCards.map((card, index) => (
-              <ScrollStackItem
-                key={card.title}
-                itemClassName="!h-auto min-h-[22rem] w-full bg-zinc-900/85 backdrop-blur-xl border border-white/10"
-              >
-                <div className="space-y-5">
-                  <span className="text-amber-500/70 font-mono text-xs tracking-[0.2em] uppercase">
-                    Benefit 0{index + 1}
-                  </span>
-                  <h3 className="text-xl md:text-2xl font-bold tracking-[0.08em] uppercase text-amber-500 leading-snug">
-                    {card.title}
-                  </h3>
-                  <p className="text-base md:text-lg text-white/75 leading-relaxed">{card.body}</p>
+          <div className="max-w-6xl mx-auto px-6">
+            <div className={`rounded-3xl border bg-white/[0.03] transition-colors duration-500 overflow-hidden ${featuresHighlighted ? 'border-amber-500/40' : 'border-white/10'}`}>
+              <div className="mx-4 md:mx-6 mt-4 mb-4 border border-white/10 overflow-hidden rounded-2xl">
+                <div className="px-4 md:px-6 pt-4 pb-2 text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 bg-white/[0.02]">
+                  Reading Comparison: Traditional vs. RSVP
                 </div>
-              </ScrollStackItem>
-            ))}
-          </ScrollStack>
+                <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[820px]">
+                  <thead>
+                    <tr className="bg-white/5">
+                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">Reading Metric</th>
+                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">Traditional Reading</th>
+                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">RSVP Reading</th>
+                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">Why It Matters</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-white/10 bg-white/[0.01]">
+                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Eye Movement</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">High (constant jumping)</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">Near zero (fixed focus)</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Less saccade overhead improves sustained attention.</td>
+                    </tr>
+                    <tr className="border-t border-white/10">
+                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Focus Level</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Easy to lose place</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">High (active attention)</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Single-word stream minimizes visual distractions.</td>
+                    </tr>
+                    <tr className="border-t border-white/10 bg-white/[0.01]">
+                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Speed</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">~200 WPM average</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">400+ WPM attainable</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Useful for scanning and high-volume reading sessions.</td>
+                    </tr>
+                    <tr className="border-t border-white/10">
+                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Best Context</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Better for deep study</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">Great for skimming and info-gathering</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Choose mode based on goal: depth vs throughput.</td>
+                    </tr>
+                  </tbody>
+                </table>
+                </div>
 
-          <div className={`mt-10 mx-auto max-w-6xl bg-white/[0.03] border transition-colors duration-500 overflow-hidden ${featuresHighlighted ? 'border-amber-500/40' : 'border-white/10'}`}>
-              <div className="px-6 pt-5 pb-2 text-[10px] font-bold tracking-[0.2em] uppercase text-white/50">Comparison: Traditional vs. RSVP</div>
-              <table className="w-full text-left border-collapse min-w-[560px]">
-                <thead>
-                  <tr className="bg-white/5">
-                    <th className="px-4 py-3 text-[10px] tracking-[0.2em] uppercase text-white/60">Feature</th>
-                    <th className="px-4 py-3 text-[10px] tracking-[0.2em] uppercase text-white/60">Traditional Reading</th>
-                    <th className="px-4 py-3 text-[10px] tracking-[0.2em] uppercase text-white/60">RSVP Reading</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-white/10">
-                    <td className="px-4 py-3 text-sm text-white/80">Eye Movement</td>
-                    <td className="px-4 py-3 text-sm text-white/60">High (constant jumping)</td>
-                    <td className="px-4 py-3 text-sm text-amber-500/90">Near Zero (fixed focus)</td>
-                  </tr>
-                  <tr className="border-t border-white/10">
-                    <td className="px-4 py-3 text-sm text-white/80">Focus Level</td>
-                    <td className="px-4 py-3 text-sm text-white/60">Easy to lose place</td>
-                    <td className="px-4 py-3 text-sm text-amber-500/90">High (active attention)</td>
-                  </tr>
-                  <tr className="border-t border-white/10">
-                    <td className="px-4 py-3 text-sm text-white/80">Speed</td>
-                    <td className="px-4 py-3 text-sm text-white/60">~200 WPM average</td>
-                    <td className="px-4 py-3 text-sm text-amber-500/90">400+ WPM average</td>
-                  </tr>
-                  <tr className="border-t border-white/10">
-                    <td className="px-4 py-3 text-sm text-white/80">Context</td>
-                    <td className="px-4 py-3 text-sm text-white/60">Better for deep study</td>
-                    <td className="px-4 py-3 text-sm text-amber-500/90">Better for skimming and info-gathering</td>
-                  </tr>
-                </tbody>
-              </table>
-          </div>
+                <div className="px-4 md:px-6 py-5 border-t border-white/10 bg-white/[0.015]">
+                  <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/55 mb-4">Quick Visual Comparison</h4>
+                  <div className="space-y-4">
+                    {comparisonGraphData.map((item) => (
+                      <div key={item.label}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs tracking-[0.08em] uppercase text-white/70">{item.label}</span>
+                          <span className="text-[10px] text-white/45">Traditional {item.traditional}% | RSVP {item.rsvp}%</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-white/40 rounded-full" style={{ width: `${item.traditional}%` }} />
+                          </div>
+                          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500/75 to-teal-400/65 rounded-full" style={{ width: `${item.rsvp}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-          <div className="mt-8 mx-auto max-w-6xl border-l-2 border-amber-500/40 pl-4">
-              <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-amber-500 mb-2">A note of caution</h4>
-              <p className="text-sm text-white/70 leading-relaxed">
-                RSVP is excellent for linear content like articles or emails, but can be less ideal for highly technical material or poetry where you need to pause and reflect.
-              </p>
+              <div className="mx-4 md:mx-6 mb-6 border-l-2 border-amber-500/40 pl-4">
+                <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-amber-500 mb-2">A note of caution</h4>
+                <p className="text-sm text-white/70 leading-relaxed">
+                  RSVP is excellent for linear content like articles or emails, but can be less ideal for highly technical material or poetry where you need to pause and reflect.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -569,29 +676,21 @@ export default function Landing({ onEnter = () => {} }) {
       </div>
 
       <section className="py-28 px-6 max-w-7xl mx-auto border-t border-white/5">
-        <SectionHeader title="How It Works" subtitle="A simple reading workflow" />
+        <SectionHeader title="Reading Signals" subtitle="A clearer sense of value at a glance" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {readingWorkflow.map((step, index) => (
-            <div key={step.title} className="bg-white/[0.03] border border-white/10 p-8 rounded-2xl backdrop-blur-xl">
-              <div className="text-[10px] tracking-[0.2em] uppercase text-amber-500/70 mb-3">Step 0{index + 1}</div>
-              <h3 className="text-lg font-bold tracking-[0.08em] uppercase text-white mb-3">{step.title}</h3>
-              <p className="text-sm text-white/70 leading-relaxed">{step.body}</p>
+          {readingSignals.map((signal) => (
+            <div key={signal.label} className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-8">
+              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-amber-500/10 blur-2xl" />
+              <div className="relative">
+                <div className="text-3xl md:text-4xl font-black tracking-tight text-white mb-3">{signal.value}</div>
+                <div className="text-[10px] tracking-[0.22em] uppercase text-amber-500/80 font-bold mb-4">{signal.label}</div>
+                <p className="text-sm leading-relaxed text-white/65">{signal.note}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="py-28 px-6 max-w-7xl mx-auto border-t border-white/5">
-        <SectionHeader title="Made For" subtitle="Who uses RSVP daily" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {useCases.map((item) => (
-            <div key={item.title} className="group bg-white/[0.02] border border-white/10 hover:border-amber-500/30 transition-all duration-300 p-6 rounded-2xl">
-              <h4 className="text-sm font-bold tracking-[0.12em] uppercase text-white group-hover:text-amber-400 transition-colors mb-3">{item.title}</h4>
-              <p className="text-sm text-white/65 leading-relaxed">{item.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* --- PRICING SECTION --- */}
       <section id="pricing" className="py-32 px-6 max-w-7xl mx-auto">
@@ -657,6 +756,30 @@ export default function Landing({ onEnter = () => {} }) {
           <p className="text-sm text-white/70 leading-relaxed">
             Upload a PDF, select a chapter, and start RSVP playback. Use the WPM control to tune speed and the focus highlight settings to match your reading rhythm.
           </p>
+        </div>
+      </section>
+
+      <section className="py-24 px-6 max-w-6xl mx-auto border-t border-white/5">
+        <div className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-transparent to-teal-500/10 p-10 md:p-14">
+          <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          <div className="relative text-center">
+            <p className="text-[10px] tracking-[0.25em] uppercase font-black text-amber-500/80 mb-4">Reading Acceleration Layer</p>
+            <h3 className="text-2xl md:text-4xl font-black tracking-[0.12em] uppercase text-white mb-5">Build A Faster Reading Routine</h3>
+            <p className="text-sm md:text-base text-white/70 max-w-2xl mx-auto leading-relaxed mb-8">
+              Stop drifting across lines. Keep your eyes fixed, tune your speed, and finish more chapters with less cognitive drag.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
+              <ReadimentaryButton onClick={() => setShowLogin(true)} color="amber">
+                <BookOpen size={18} /> Start Reading <ArrowRight size={18} />
+              </ReadimentaryButton>
+              <ReadimentaryButton onClick={() => {
+                const container = document.getElementById('landing-scroll-container');
+                if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+              }} color="teal">
+                <RotateCcw size={18} /> Back To Top
+              </ReadimentaryButton>
+            </div>
+          </div>
         </div>
       </section>
 

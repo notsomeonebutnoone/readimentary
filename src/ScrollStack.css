@@ -54,6 +54,11 @@
   padding: 12vh 2rem 36rem;
 }
 
+/* Features section needs denser spacing before the comparison table */
+.scroll-stack-scroller.scroll-stack-features .scroll-stack-inner {
+  padding: 8vh 2rem 5rem;
+}
+
 @media (max-width: 768px) {
   .scroll-stack-inner {
     padding: 14vh 1rem 34rem;
@@ -61,6 +66,10 @@
 
   .scroll-stack-scroller.scroll-stack-window .scroll-stack-inner {
     padding: 10vh 1rem 28rem;
+  }
+
+  .scroll-stack-scroller.scroll-stack-features .scroll-stack-inner {
+    padding: 7vh 1rem 4rem;
   }
 
   .scroll-stack-card {
