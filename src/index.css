@@ -1,0 +1,312 @@
+@import "tailwindcss";
+
+/* READIMENTARY - GLOBAL STYLES
+  Custom layout resets to ensure the RSVP engine fills the viewport.
+*/
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px; /* Adjust this to match your navbar height */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  color: #fff;
+  /* Prevent horizontal scroll and allow full height */
+  min-height: 100vh;
+  width: 100%;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* LOGO PROVISIONS
+   Use the .app-logo class on your <img> tag in App.jsx 
+   to ensure it fits perfectly in the header.
+*/
+.app-logo {
+  height: 48px; /* Optimized height for the Readimentary header */
+  width: auto;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.app-logo:hover {
+  transform: scale(1.02);
+}
+
+/* Custom scrollbar for a cleaner, high-performance look */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #333;
+}
+
+/* ============ ANIMATION UTILITIES ============ */
+/* Custom easing for premium feel */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Smooth transitions for interactive elements */
+* {
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Button hover improvements */
+button {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              filter 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* Smooth progress bar transitions */
+.progress-bar {
+  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Premium progress bar with enhanced motion and visual polish */
+.progress-bar-premium {
+  transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  min-width: 4px; /* Ensure rounded ends are visible even at low progress */
+}
+
+/* Modal backdrop blur animation */
+.modal-backdrop {
+  animation: fadeIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modal-content {
+  animation: scaleIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Card hover lift effect */
+.card-lift {
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.2s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ORP highlight subtle glow */
+.orp-highlight {
+  transition: opacity 0.15s ease, text-shadow 0.15s ease;
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+}
+
+/* Focus rail glow */
+.focus-rail {
+  transition: opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Staggered animation delay utility */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* Animation classes */
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+/* ============ LANDING PAGE ANIMATIONS ============ */
+/* Subtle breathing motion - very slow, contemplative */
+@keyframes breathe {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.002);
+  }
+}
+
+/* Blinking animation - natural timing */
+@keyframes blink {
+  0%, 90%, 100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  92%, 98% {
+    transform: scaleY(0.1);
+    opacity: 0.3;
+  }
+}
+
+/* Subtle parallax drift - contemplative movement */
+@keyframes drift {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(1px, -1px) rotate(0.2deg);
+  }
+  66% {
+    transform: translate(-1px, 1px) rotate(-0.2deg);
+  }
+}
+
+/* Slow pulse for background glow */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.05;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.08;
+    transform: scale(1.05);
+  }
+}
+
+/* Pixel shimmer - very subtle noise flicker */
+@keyframes pixel-shimmer {
+  0%, 100% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0.98;
+  }
+  50% {
+    opacity: 0.99;
+  }
+  75% {
+    opacity: 0.97;
+  }
+}
+
+/* Apply animations with reduced motion support */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-breathe {
+    animation: breathe 6s ease-in-out infinite;
+    transform-origin: center center;
+  }
+
+  .animate-blink {
+    animation: blink 4s ease-in-out infinite;
+    transform-origin: center center;
+  }
+
+  .animate-drift {
+    animation: drift 20s ease-in-out infinite;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-slow 8s ease-in-out infinite;
+  }
+
+  .pixel {
+    animation: pixel-shimmer 12s ease-in-out infinite;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-breathe,
+  .animate-blink,
+  .animate-drift,
+  .animate-pulse-slow,
+  .pixel {
+    animation: none;
+  }
+}
+
+/* Pixel art rendering */
+.pixel-art {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  -ms-interpolation-mode: nearest-neighbor;
+}
+
+.pixel-art-container {
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.1));
+}
+
+/* Transition duration utility */
+.duration-400 {
+  transition-duration: 400ms;
+}
