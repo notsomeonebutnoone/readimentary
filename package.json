@@ -9,7 +9,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "npm run dev && electron .",
+    "electron:dev": "node scripts/electron-dev.mjs",
     "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {

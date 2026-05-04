@@ -1,12 +1,16 @@
-// electron/main.js
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const isDev = require('electron-is-dev');
-const Database = require('better-sqlite3');
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import Database from 'better-sqlite3';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let mainWindow;
 let db;
+
+const isDev = !app.isPackaged;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -21,8 +25,9 @@ function createWindow() {
   });
 
   const startURL = isDev
-    ? 'http://localhost:5173' // Vite dev server default
-    : `file://${path.join(app.getAppPath(), 'dist', 'index.html')}`;
+    ? process.env.VITE_DEV_SERVER_URL || 'http://127.0.0.1:5173'
+    : pathToFileURL(path.join(app.getAppPath(), 'dist', 'index.html')).href;
+
   mainWindow.loadURL(startURL);
   mainWindow.once('ready-to-show', () => mainWindow.show());
 }
@@ -31,7 +36,6 @@ function initDatabase() {
   const userDataPath = app.getPath('userData');
   const dbPath = path.join(userDataPath, 'library.db');
   db = new Database(dbPath);
-  // Create tables if not exist
   db.exec(`
     CREATE TABLE IF NOT EXISTS books (
       id TEXT PRIMARY KEY,
@@ -62,7 +66,6 @@ app.whenReady().then(() => {
   initDatabase();
   createWindow();
 
-  // Settings (JSON file)
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
   ipcMain.handle('settings:get', async () => {
@@ -70,7 +73,6 @@ app.whenReady().then(() => {
       const data = await fs.promises.readFile(settingsPath, 'utf-8');
       return JSON.parse(data);
     } catch {
-      // Return defaults if file missing
       return { wpm: 350, fontSize: 56, fontFamily: 'ui-serif', showORP: true };
     }
   });
@@ -80,62 +82,57 @@ app.whenReady().then(() => {
     return true;
   });
 
-  // User ID (simple file storage)
   const userIdPath = path.join(app.getPath('userData'), 'userId.txt');
   ipcMain.handle('user:getId', async () => {
     try {
       return await fs.promises.readFile(userIdPath, 'utf-8');
     } catch {
-      const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const id = `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
       await fs.promises.writeFile(userIdPath, id, 'utf-8');
       return id;
     }
   });
 
-  // Library CRUD (SQLite)
-  ipcMain.handle('library:getAll', async () => {
-    const rows = db.prepare('SELECT * FROM books').all();
-    return rows;
-  });
+  ipcMain.handle('library:getAll', async () => db.prepare('SELECT * FROM books').all());
 
   ipcMain.handle('library:save', async (event, book) => {
-    const stmt = db.prepare(`INSERT OR REPLACE INTO books (id, title, filePath, totalWords, createdAt) VALUES (?, ?, ?, ?, ?)`);
+    const stmt = db.prepare(
+      'INSERT OR REPLACE INTO books (id, title, filePath, totalWords, createdAt) VALUES (?, ?, ?, ?, ?)'
+    );
     stmt.run(book.id, book.title, book.filePath, book.totalWords, book.createdAt || Date.now());
     return true;
   });
 
   ipcMain.handle('library:delete', async (event, bookId) => {
     db.prepare('DELETE FROM books WHERE id = ?').run(bookId);
-    // also delete related chapters and progress
     db.prepare('DELETE FROM chapters WHERE bookId = ?').run(bookId);
     db.prepare('DELETE FROM progress WHERE bookId = ?').run(bookId);
     return true;
   });
 
-  // Chapters CRUD
-  ipcMain.handle('chapters:get', async (event, bookId) => {
-    return db.prepare('SELECT * FROM chapters WHERE bookId = ?').all(bookId);
-  });
+  ipcMain.handle('chapters:get', async (event, bookId) => db.prepare('SELECT * FROM chapters WHERE bookId = ?').all(bookId));
 
   ipcMain.handle('chapters:save', async (event, chapter) => {
-    const stmt = db.prepare(`INSERT OR REPLACE INTO chapters (id, bookId, title, startWordIndex, endWordIndex) VALUES (?, ?, ?, ?, ?)`);
+    const stmt = db.prepare(
+      'INSERT OR REPLACE INTO chapters (id, bookId, title, startWordIndex, endWordIndex) VALUES (?, ?, ?, ?, ?)'
+    );
     stmt.run(chapter.id, chapter.bookId, chapter.title, chapter.startWordIndex, chapter.endWordIndex);
     return true;
   });
 
-  // Progress CRUD
   ipcMain.handle('progress:get', async (event, bookId, chapterId) => {
     const row = db.prepare('SELECT * FROM progress WHERE bookId = ? AND chapterId = ?').get(bookId, chapterId);
     return row || null;
   });
 
   ipcMain.handle('progress:set', async (event, prog) => {
-    const stmt = db.prepare(`INSERT OR REPLACE INTO progress (bookId, chapterId, wordIndex, updatedAt) VALUES (?, ?, ?, ?)`);
+    const stmt = db.prepare(
+      'INSERT OR REPLACE INTO progress (bookId, chapterId, wordIndex, updatedAt) VALUES (?, ?, ?, ?)'
+    );
     stmt.run(prog.bookId, prog.chapterId, prog.wordIndex, prog.updatedAt || Date.now());
     return true;
   });
 
-  // File operations for PDFs
   const booksDir = path.join(app.getPath('userData'), 'books');
   fs.mkdirSync(booksDir, { recursive: true });
 
@@ -149,7 +146,7 @@ app.whenReady().then(() => {
     const filePath = path.join(booksDir, `${bookId}.pdf`);
     try {
       const data = await fs.promises.readFile(filePath);
-      return data.buffer; // Return ArrayBuffer
+      return data.buffer;
     } catch {
       return null;
     }
@@ -161,17 +158,15 @@ app.whenReady().then(() => {
     return true;
   });
 
-  // Open file dialog for PDF import
   ipcMain.handle('dialog:openPdf', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       filters: [{ name: 'PDF', extensions: ['pdf'] }],
-      properties: ['openFile']
+      properties: ['openFile'],
     });
     if (canceled) return null;
     return filePaths[0];
   });
 
-  // Analytics storage (simple JSON file)
   const analyticsPath = path.join(app.getPath('userData'), 'analytics.json');
   ipcMain.handle('analytics:get', async (event, userId) => {
     try {
@@ -182,13 +177,14 @@ app.whenReady().then(() => {
       return null;
     }
   });
+
   ipcMain.handle('analytics:set', async (event, userId, analytics) => {
     let all = {};
     try {
       const raw = await fs.promises.readFile(analyticsPath, 'utf-8');
       all = JSON.parse(raw);
     } catch {
-      // Ignore missing or corrupt analytics files and recreate them below.
+      // Recreate the file if it does not exist or cannot be parsed.
     }
     all[userId] = analytics;
     await fs.promises.writeFile(analyticsPath, JSON.stringify(all, null, 2), 'utf-8');
