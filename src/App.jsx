@@ -233,17 +233,37 @@ export default function App() {
     if (!file) return;
     setIsImporting(true);
     try {
-      await ensurePdfJsLoaded();
+      const pdfLib = await ensurePdfJsLoaded();
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let text = '';
+      const bufferForText = arrayBuffer.slice(0);
+      const bufferForViewer = arrayBuffer.slice(0);
+      const pdf = await pdfLib.getDocument({ data: bufferForText }).promise;
+      const pageTexts = [];
+      const pageWordMap = [];
+      const wordToPage = [];
+      const tokenized = [];
+      let wordCursor = 0;
       for (let i = 1; i <= pdf.numPages; i += 1) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        text += `${textContent.items.map((item) => item.str).join(' ')}\n`;
+        const pageText = textContent.items.map((item) => item.str).join(' ');
+        pageTexts.push(pageText);
+        const pageWords = tokenizeText(pageText);
+        const wordCount = pageWords.length;
+        pageWordMap.push({
+          page: i,
+          startIndex: wordCursor,
+          endIndex: wordCursor + wordCount,
+          wordCount
+        });
+        if (wordCount > 0) {
+          tokenized.push(...pageWords);
+          pageWords.forEach(() => wordToPage.push(i));
+        }
+        wordCursor += wordCount;
       }
 
-      const tokenized = tokenizeText(text);
+      const text = pageTexts.join('\n');
       const chapters = detectChaptersFromText(text);
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       const pdfUrl = URL.createObjectURL(blob);
@@ -255,8 +275,10 @@ export default function App() {
         title: file.name.replace('.pdf', ''),
         words: tokenized,
         chapters,
+        pageWordMap,
+        wordToPage,
         pdfUrl,
-        pdfData: arrayBuffer,
+        pdfData: bufferForViewer,
         currentIndex: 0,
         chapterProgressMap: {}
       };

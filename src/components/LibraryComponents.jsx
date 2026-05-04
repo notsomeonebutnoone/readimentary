@@ -79,14 +79,3 @@ const StatCard = ({ icon, label, value, sub }) => (
 );
 
 
-const floatKeyframes = `
-    @keyframes float-book {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-8px); }
-    }
-    @keyframes scan-eyes {
-      0%, 100% { width: 40px; transform: translateX(0); }
-      50% { width: 40px; transform: translateX(4px); }
-      90% { width: 0px; } /* Blink */
-    }
-  `;

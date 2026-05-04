@@ -48,7 +48,14 @@ export default function ReaderScreen({
       <div className="flex-1 flex overflow-hidden">
         {(currentBook?.pdfUrl || currentBook?.pdfData) && (
           <div className="w-[55%] min-w-[420px] border-r border-white/5 flex-shrink-0">
-            <PDFViewer pdfUrl={currentBook.pdfUrl} pdfData={currentBook.pdfData} currentWordIndex={currentIndex} totalWords={words.length} />
+            <PDFViewer
+              pdfUrl={currentBook.pdfUrl}
+              pdfData={currentBook.pdfData}
+              currentWordIndex={currentIndex}
+              totalWords={words.length}
+              pageWordMap={currentBook.pageWordMap}
+              wordToPage={currentBook.wordToPage}
+            />
           </div>
         )}
 

@@ -1,3 +1,5 @@
+// src/lib/appStorage.js
+
 const getLibraryKey = (userId) => `rsvp_library_${userId}`;
 const getAnalyticsKey = (userId) => `rsvp_analytics_${userId}`;
 const SETTINGS_KEY = 'rsvp_settings_v4';
@@ -27,7 +29,7 @@ export const loadSettings = () => {
   try {
     const stored = localStorage.getItem(SETTINGS_KEY);
     return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
-  } catch (e) {
+  } catch {
     return defaults;
   }
 };
@@ -55,7 +57,9 @@ export const saveLibrary = (userId, library) => {
   try {
     const safe = (library || []).map((b) => {
       if (!b) return b;
-      const { pdfData, pdfUrl, ...rest } = b;
+      const rest = { ...b };
+      delete rest.pdfData;
+      delete rest.pdfUrl;
       return rest;
     });
     localStorage.setItem(getLibraryKey(userId), JSON.stringify(safe));
