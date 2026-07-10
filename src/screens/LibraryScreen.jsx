@@ -95,7 +95,10 @@ export default function LibraryScreen({
                   </div>
                   <div>
                     <h3 className="text-lg font-bold group-hover:text-amber-400 transition-colors tracking-[0.1em] uppercase text-white">{book.title}</h3>
-                    <p className="text-[10px] text-white/40 font-mono tracking-[0.2em] uppercase mt-2">{book.words.length.toLocaleString()} words</p>
+                    <p className="text-[10px] text-white/40 font-mono tracking-[0.2em] uppercase mt-2">
+                      {(book.words?.length || 0).toLocaleString()} words
+                      {book.status === 'processing' && ` · parsing ${book.parsedPages || 0}/${book.totalPages || '…'} pages`}
+                    </p>
                   </div>
                 </div>
                 <button

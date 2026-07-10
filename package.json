@@ -6,6 +6,8 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
+    "dev:api": "node --watch server/index.mjs",
+    "start:api": "node server/index.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

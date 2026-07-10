@@ -78,7 +78,7 @@ const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, col
   );
 };
 
-export default function Landing({ onEnter = () => {} }) {
+export default function Landing({ onEnter = () => {}, onEmailAuth = async () => {}, onOAuth = () => {}, onCheckout = async () => {}, user = null, authError = '' }) {
   const containerRef = useRef(null);
   const mainFigureRef = useRef(null);
   const backFigureRef = useRef(null);
@@ -92,6 +92,8 @@ export default function Landing({ onEnter = () => {} }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
+  const [authMode, setAuthMode] = useState('login');
+  const [authBusy, setAuthBusy] = useState(false);
   const [featuresHighlighted, setFeaturesHighlighted] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState('hero');
   const [loopCharacterIndex, setLoopCharacterIndex] = useState(0);
@@ -99,6 +101,7 @@ export default function Landing({ onEnter = () => {} }) {
   // Sample reader state
   const [sampleIndex, setSampleIndex] = useState(0);
   const [samplePlaying, setSamplePlaying] = useState(false);
+  const [sampleParseProgress, setSampleParseProgress] = useState(18);
 
   // --- Particle Data ---
   const createParticles = (count, xRange) => Array.from({ length: count }).map((_, i) => ({
@@ -322,7 +325,7 @@ export default function Landing({ onEnter = () => {} }) {
         }
         return next;
       });
-    }, 60000 / 300); // 300 WPM
+    }, 60000 / 450);
     return () => clearInterval(interval);
   }, [samplePlaying, sampleIndex, sampleWords.length]);
 
@@ -339,7 +342,14 @@ export default function Landing({ onEnter = () => {} }) {
     );
   };
 
-  const sampleWpm = 300;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSampleParseProgress((progress) => progress >= 100 ? 18 : Math.min(100, progress + 3));
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const sampleWpm = 450;
 
   const handleSamplePlayPause = () => {
     if (!samplePlaying && sampleIndex >= sampleWords.length - 1) {
@@ -353,9 +363,16 @@ export default function Landing({ onEnter = () => {} }) {
     setSampleIndex(0);
   };
 
-  const handleEmailLogin = (e) => {
+  const handleEmailLogin = async (e) => {
     e.preventDefault();
-    onEnter('email');
+    setAuthBusy(true);
+    try {
+      await onEmailAuth({ email, password, mode: authMode, rememberMe });
+    } catch {
+      // The parent renders the uniform API error in this modal.
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   const highlightFeatures = () => {
@@ -371,7 +388,7 @@ export default function Landing({ onEnter = () => {} }) {
 
   const faqs = [
     { q: "What is RSVP reading?", a: "RSVP (Rapid Serial Visual Presentation) shows one word at a time in a fixed position so you can reduce eye movement and maintain reading flow." },
-    { q: "Can I use my own books?", a: "Yes. Upload your PDF and read by chapter. Your progress is saved locally in your browser." },
+    { q: "What happens to my document data?", a: "PDF bytes and extracted reading data stay in your browser. The API stores only account, entitlement, and processing metadata needed to enforce your workspace tier." },
     { q: "Is this good for every type of reading?", a: "RSVP is best for linear content like articles, essays, and nonfiction. For dense math, code, or poetry, traditional reading may still be better." }
   ];
 
@@ -382,9 +399,9 @@ export default function Landing({ onEnter = () => {} }) {
   ];
 
   const readingSignals = [
-    { value: "< 2 min", label: "Average setup", note: "Upload to first chapter in a single flow." },
-    { value: "300-600", label: "Target WPM", note: "Tune speed based on content difficulty." },
-    { value: "100%", label: "Local-first", note: "Your library and progress stay in-browser." }
+    { value: "< 2 min", label: "Instant ingestion", note: "Begin on page one while background-stream parsing continues." },
+    { value: "300-600", label: "Target WPM tiers", note: "Tune throughput to match the density of each document." },
+    { value: "100%", label: "Focal drift lock", note: "Optically centered word mapping keeps the recognition point fixed." }
   ];
 
   const planStyles = {
@@ -447,10 +464,10 @@ export default function Landing({ onEnter = () => {} }) {
             <div className="flex justify-end flex-1">
               <div className="relative inline-block group">
                 <button
-                  onClick={() => setShowLogin(true)}
+                  onClick={() => user ? onEnter() : setShowLogin(true)}
                   className="relative z-10 flex items-center gap-2 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-5 py-2 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-[9px] uppercase"
                 >
-                  START <ArrowRight size={12} />
+                  {user ? 'OPEN READER' : 'START'} <ArrowRight size={12} />
                 </button>
                 <div className="absolute inset-0 border border-amber-500/10 translate-x-1 translate-y-1 z-0 transition-transform duration-300 group-hover:translate-x-1.5 group-hover:translate-y-1.5" />
               </div>
@@ -540,6 +557,15 @@ export default function Landing({ onEnter = () => {} }) {
                 )}
               </div>
             </div>
+            <div className="mt-6 pt-5 border-t border-white/10">
+              <div className="flex items-center justify-between text-[9px] tracking-[0.18em] uppercase text-white/40 mb-2">
+                <span>Background parsing</span>
+                <span>{sampleParseProgress}% · reader ready</span>
+              </div>
+              <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-teal-400 transition-[width] duration-500" style={{ width: `${sampleParseProgress}%` }} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -596,27 +622,21 @@ export default function Landing({ onEnter = () => {} }) {
                   <tbody>
                     <tr className="border-t border-white/10 bg-white/[0.01]">
                       <td className="px-5 py-4 text-sm text-white/85 font-semibold">Eye Movement</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">High (constant jumping)</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">Near zero (fixed focus)</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Rigid horizontal jumping</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">Fixed focal point focus</td>
                       <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Less saccade overhead improves sustained attention.</td>
                     </tr>
                     <tr className="border-t border-white/10">
-                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Focus Level</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Easy to lose place</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">High (active attention)</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Single-word stream minimizes visual distractions.</td>
+                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Vocal Load</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Sub-vocalization limits pace</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">High-pace elimination</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Controlled presentation reduces the impulse to internally narrate every word.</td>
                     </tr>
                     <tr className="border-t border-white/10 bg-white/[0.01]">
-                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Speed</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">~200 WPM average</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">400+ WPM attainable</td>
+                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Throughput</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">~250 WPM</td>
+                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">400–900+ WPM</td>
                       <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Useful for scanning and high-volume reading sessions.</td>
-                    </tr>
-                    <tr className="border-t border-white/10">
-                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Best Context</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Better for deep study</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">Great for skimming and info-gathering</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Choose mode based on goal: depth vs throughput.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -710,7 +730,11 @@ export default function Landing({ onEnter = () => {} }) {
                   </li>
                 ))}
               </ul>
-              <ReadimentaryButton color={plan.color} onClick={() => setShowLogin(true)}>Get Started</ReadimentaryButton>
+              <ReadimentaryButton color={plan.color} onClick={() => {
+                if (!user) setShowLogin(true);
+                else if (plan.price === '0') onEnter();
+                else if (!user.isPaid) onCheckout();
+              }}>{plan.price === '0' ? 'Start Free' : user?.isPaid ? 'Paid Access Active' : 'Upgrade Securely'}</ReadimentaryButton>
             </div>
           ))}
         </div>
@@ -802,9 +826,9 @@ export default function Landing({ onEnter = () => {} }) {
             </button>
 
             <div className="mb-8">
-              <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">Welcome Back</h2>
+              <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
               <p className="text-[10px] text-white/40 tracking-[0.15em] uppercase mt-3">
-                Sign in to continue to your reading workspace
+                {authMode === 'login' ? 'Sign in to continue to your reading workspace' : 'Your first PDF is included free'}
               </p>
             </div>
 
@@ -865,13 +889,20 @@ export default function Landing({ onEnter = () => {} }) {
               <div className="relative inline-block group w-full pt-2">
                 <button
                   type="submit"
+                  disabled={authBusy}
                   className="relative z-10 w-full flex items-center justify-center gap-3 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-6 py-4 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase"
                 >
-                  Continue <ArrowRight size={14} />
+                  {authBusy ? 'Authenticating…' : authMode === 'login' ? 'Sign In' : 'Create Account'} <ArrowRight size={14} />
                 </button>
                 <div className="absolute inset-0 border border-amber-500/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
               </div>
             </form>
+
+            {authError && <p role="alert" className="mt-4 text-xs text-red-400 leading-relaxed">{authError}</p>}
+
+            <button type="button" onClick={() => setAuthMode((mode) => mode === 'login' ? 'register' : 'login')} className="mt-5 w-full text-[10px] text-amber-500/80 hover:text-amber-400 tracking-[0.15em] uppercase">
+              {authMode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in'}
+            </button>
 
             <div className="my-6 flex items-center gap-3">
               <div className="h-px flex-1 bg-white/10" />
@@ -880,8 +911,8 @@ export default function Landing({ onEnter = () => {} }) {
             </div>
 
             <div className="space-y-3">
-              <SocialLoginButton icon={<GoogleIcon />} onClick={() => onEnter('google')}>Google Auth</SocialLoginButton>
-              <SocialLoginButton icon={<AppleIcon />} onClick={() => onEnter('apple')}>Apple ID</SocialLoginButton>
+              <SocialLoginButton icon={<GoogleIcon />} onClick={() => onOAuth('google')}>Continue with Google</SocialLoginButton>
+              <SocialLoginButton icon={<AppleIcon />} onClick={() => onOAuth('apple')}>Continue with Apple</SocialLoginButton>
             </div>
 
             <p className="mt-6 text-[9px] text-white/35 tracking-[0.12em] uppercase leading-relaxed">

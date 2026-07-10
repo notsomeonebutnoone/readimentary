@@ -147,7 +147,31 @@ Readimentary currently stores user data locally in your browser:
 - `IndexedDB`:
   - uploaded PDF blobs (for reload persistence)
 
-No authentication backend is wired in this version; login UI is currently presentational.
+PDF bytes remain local (IndexedDB in the browser). Account identity, book-slot metadata,
+and paid entitlement are handled by the API; passwords are scrypt-hashed and sessions
+are signed JWTs stored in HttpOnly, SameSite cookies.
+
+## API, authentication, and billing
+
+Copy `.env.example` to `.env` in your process environment, configure provider/Stripe
+credentials, then run the frontend and API in separate terminals:
+
+```bash
+npm run dev
+npm run dev:api
+```
+
+The API uses Node's built-in SQLite module and requires Node.js 22.5 or newer.
+
+Register these OAuth callbacks:
+
+- Google: `http://localhost:8787/api/auth/callback/google`
+- Apple: `http://localhost:8787/api/auth/callback/apple`
+
+Forward Stripe events to `http://localhost:8787/api/webhooks/stripe`. The API accepts
+`checkout.session.completed` and `invoice.paid`; Stripe signature verification is
+required. The free entitlement is enforced transactionally at book registration:
+one book per account unless `users.is_paid` is true.
 
 ---
 
@@ -167,7 +191,7 @@ If you plan to use this in production, do not keep API keys in client code.
 
 - Chapter detection is heuristic-based and may need manual tuning for some PDFs.
 - Complex PDFs (scanned pages, unusual layouts) may extract text imperfectly.
-- Some UI/auth areas are prototype-level and not backed by server logic.
+- Production deployments must provide strong JWT, OAuth, Apple client-secret, and Stripe secrets.
 - A nested git entry named `readimentary` exists in repo history (mode `160000`), which may behave like a submodule depending on your clone state.
 
 ---
