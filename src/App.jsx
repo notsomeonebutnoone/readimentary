@@ -6,8 +6,9 @@ import ChaptersScreen from './screens/ChaptersScreen';
 import ReaderScreen from './screens/ReaderScreen';
 import SettingsModal from './components/app/SettingsModal';
 import { ensurePdfJsLoaded } from './lib/pdfEngine';
+import { parsePdfProgressively } from './lib/progressivePdfParser';
+import { api } from './lib/apiClient';
 import { savePdfBlob, loadPdfBlob, deletePdfBlob } from './lib/pdfBlobStore';
-import { tokenizeText, detectChaptersFromText } from './lib/textProcessing';
 import {
   getUserId,
   loadSettings,
@@ -32,6 +33,8 @@ export default function App() {
   const [isImporting, setIsImporting] = useState(false);
   const [chapterProgressMap, setChapterProgressMap] = useState({});
   const [readingStats, setReadingStats] = useState(createDefaultAnalytics());
+  const [user, setUser] = useState(null);
+  const [authError, setAuthError] = useState('');
 
   const [wpm, setWpm] = useState(350);
   const [fontSize, setFontSize] = useState(56);
@@ -92,6 +95,12 @@ export default function App() {
     setFontSize(s.fontSize);
     setFontFamily(s.fontFamily);
     setShowORP(s.showORP);
+    api.me().then(({ user: sessionUser }) => {
+      setUser(sessionUser);
+      userIdRef.current = sessionUser.id;
+      setLibrary(loadLibrary(sessionUser.id));
+      setReadingStats(loadAnalytics(sessionUser.id));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -233,64 +242,50 @@ export default function App() {
     if (!file) return;
     setIsImporting(true);
     try {
-      const pdfLib = await ensurePdfJsLoaded();
       const arrayBuffer = await file.arrayBuffer();
-      const bufferForText = arrayBuffer.slice(0);
       const bufferForViewer = arrayBuffer.slice(0);
-      const pdf = await pdfLib.getDocument({ data: bufferForText }).promise;
-      const pageTexts = [];
-      const pageWordMap = [];
-      const wordToPage = [];
-      const tokenized = [];
-      let wordCursor = 0;
-      for (let i = 1; i <= pdf.numPages; i += 1) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map((item) => item.str).join(' ');
-        pageTexts.push(pageText);
-        const pageWords = tokenizeText(pageText);
-        const wordCount = pageWords.length;
-        pageWordMap.push({
-          page: i,
-          startIndex: wordCursor,
-          endIndex: wordCursor + wordCount,
-          wordCount
-        });
-        if (wordCount > 0) {
-          tokenized.push(...pageWords);
-          pageWords.forEach(() => wordToPage.push(i));
-        }
-        wordCursor += wordCount;
-      }
-
-      const text = pageTexts.join('\n');
-      const chapters = detectChaptersFromText(text);
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       const pdfUrl = URL.createObjectURL(blob);
-      const bookId = Date.now().toString();
+      const bookId = crypto.randomUUID?.() || Date.now().toString();
+      const title = file.name.replace(/\.pdf$/i, '');
+      try {
+        await api.registerBook({ id: bookId, title });
+      } catch (error) {
+        if (error.code === 'PAYMENT_REQUIRED') {
+          const { url } = await api.checkout();
+          window.location.assign(url);
+          return;
+        }
+        throw error;
+      }
       await savePdfBlob(bookId, blob).catch(() => {});
-
-      const bookData = {
-        id: bookId,
-        title: file.name.replace('.pdf', ''),
-        words: tokenized,
-        chapters,
-        pageWordMap,
-        wordToPage,
-        pdfUrl,
-        pdfData: bufferForViewer,
-        currentIndex: 0,
-        chapterProgressMap: {}
+      let opened = false;
+      const applySnapshot = (snapshot, final = false) => {
+        const chapters = final ? snapshot.chapters : [{ id: `${bookId}-live`, title: 'Live extraction', startIndex: 0, wordCount: snapshot.words.length }];
+        const bookData = { id: bookId, title, ...snapshot, chapters, pdfUrl, pdfData: bufferForViewer, currentIndex: 0, chapterProgressMap: {} };
+        setLibrary((prev) => prev.some((book) => book.id === bookId) ? prev.map((book) => book.id === bookId ? { ...book, ...bookData } : book) : [...prev, bookData]);
+        setCurrentBook((current) => current?.id === bookId || !current ? bookData : current);
+        setWords(snapshot.words);
+        if (!opened) {
+          opened = true;
+          setCurrentIndexWithTracking(0);
+          setChapterProgressMap({});
+          setIsImporting(false);
+          navigateTo('chapters');
+        }
       };
-
-      setLibrary((prev) => [...prev, bookData]);
-      setCurrentBook(bookData);
-      setWords(tokenized);
-      setCurrentIndexWithTracking(0);
-      setChapterProgressMap({});
-      navigateTo('chapters');
+      const result = await parsePdfProgressively(arrayBuffer.slice(0), {
+        onReady: (snapshot) => applySnapshot(snapshot),
+        onProgress: (snapshot) => {
+          if (opened) applySnapshot(snapshot);
+          api.updateBook(bookId, { status: snapshot.status, totalWords: snapshot.words.length, parsedPages: snapshot.parsedPages, totalPages: snapshot.totalPages }).catch(() => {});
+        }
+      });
+      applySnapshot(result, true);
+      await api.updateBook(bookId, { status: 'ready', totalWords: result.words.length, parsedPages: result.parsedPages, totalPages: result.totalPages }).catch(() => {});
     } catch (err) {
       console.error('PDF error:', err);
+      setAuthError(err.message || 'The PDF could not be imported.');
     } finally {
       setIsImporting(false);
       if (e.target) e.target.value = '';
@@ -317,6 +312,7 @@ export default function App() {
     e.stopPropagation();
     setLibrary((prev) => prev.filter((b) => b.id !== bookId));
     deletePdfBlob(bookId).catch(() => {});
+    api.deleteBook(bookId).catch(() => {});
     if (currentBook?.id === bookId) {
       setCurrentBook(null);
       navigateTo('library');
@@ -391,6 +387,30 @@ export default function App() {
     }, 400);
   };
 
+  const handleEmailAuth = async ({ email, password, mode }) => {
+    setAuthError('');
+    try {
+      const result = mode === 'register' ? await api.register(email, password) : await api.login(email, password);
+      setUser(result.user);
+      userIdRef.current = result.user.id;
+      setLibrary(loadLibrary(result.user.id));
+      setReadingStats(loadAnalytics(result.user.id));
+      handleEnterLibrary();
+    } catch (error) {
+      setAuthError(error.message);
+      throw error;
+    }
+  };
+
+  const handleCheckout = async () => {
+    try {
+      const { url } = await api.checkout();
+      window.location.assign(url);
+    } catch (error) {
+      setAuthError(error.message);
+    }
+  };
+
   const handleGoHome = () => {
     setIsTransitioning(true);
     setTimeout(() => {
@@ -407,7 +427,7 @@ export default function App() {
           className={`fixed inset-0 z-[100] overflow-y-auto transition-opacity duration-400 ${isTransitioning ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           style={{ pointerEvents: isTransitioning ? 'none' : 'auto' }}
         >
-          <Landing onEnter={handleEnterLibrary} />
+          <Landing onEnter={handleEnterLibrary} onEmailAuth={handleEmailAuth} onOAuth={(provider) => { window.location.assign(api.oauthUrl(provider)); }} onCheckout={handleCheckout} user={user} authError={authError} />
         </div>
       )}
 
