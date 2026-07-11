@@ -1,14 +1,21 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8787' : window.location.origin);
 
 async function request(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options
-  });
+  let response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options
+    });
+  } catch {
+    const error = new Error('The authentication service is unavailable. Please try again shortly.');
+    error.code = 'API_UNAVAILABLE';
+    throw error;
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.error?.message || 'Request failed.');
+    const error = new Error(data.error?.message || (response.status === 404 ? 'Authentication is not configured on this deployment.' : 'Request failed.'));
     error.code = data.error?.code;
     error.status = response.status;
     throw error;
@@ -18,6 +25,7 @@ async function request(path, options = {}) {
 
 export const api = {
   me: () => request('/api/auth/me'),
+  providers: () => request('/api/auth/providers'),
   login: (email, password) => request('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (email, password) => request('/api/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) }),
   logout: () => request('/api/auth/logout', { method: 'POST' }),

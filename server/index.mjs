@@ -2,14 +2,13 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { URL, URLSearchParams } from 'node:url';
 import { db, publicUser, findOrCreateOAuthUser } from './database.mjs';
-import { hashPassword, randomState, signJwt, verifyJwt, verifyPassword, verifyStripeSignature } from './security.mjs';
+import { hashPassword, signJwt, verifyJwt, verifyPassword, verifyStripeSignature } from './security.mjs';
 
 const port = Number(process.env.API_PORT || 8787);
 const appUrl = process.env.APP_URL || 'http://localhost:5173';
 const apiUrl = process.env.API_URL || `http://localhost:${port}`;
 const secureCookie = process.env.NODE_ENV === 'production' ? '; Secure' : '';
 const cookie = (token) => `readimentary_session=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${secureCookie}`;
-const states = new Map();
 
 async function verifiedAppleClaims(idToken) {
   const [encodedHeader, encodedPayload, encodedSignature] = (idToken || '').split('.');
@@ -57,6 +56,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS' }); return res.end(); }
   try {
     if (req.method === 'GET' && url.pathname === '/api/health') return send(res, 200, { ok: true });
+    if (req.method === 'GET' && url.pathname === '/api/auth/providers') return send(res, 200, { providers: { email: true, google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET), apple: Boolean(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET) } });
     if (req.method === 'GET' && url.pathname === '/api/auth/me') { const user = currentUser(req); return user ? send(res, 200, { user: publicUser(user) }) : send(res, 401, { error: { code: 'UNAUTHENTICATED', message: 'No active session.' } }); }
     if (req.method === 'POST' && ['/api/auth/register','/api/auth/login'].includes(url.pathname)) {
       const { email, password } = JSON.parse((await readBody(req)).toString() || '{}');
@@ -71,18 +71,20 @@ const server = http.createServer(async (req, res) => {
       return issueSession(res, user);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') return send(res, 200, { ok: true }, { 'Set-Cookie': `readimentary_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureCookie}` });
-    if (req.method === 'GET' && url.pathname.startsWith('/api/auth/oauth/')) {
-      const provider = url.pathname.split('/').pop(); const state = randomState(); states.set(state, { provider, expires: Date.now()+600000 });
+    if (req.method === 'GET' && (url.pathname.startsWith('/api/auth/oauth/') || url.pathname === '/api/auth/google')) {
+      const provider = url.pathname === '/api/auth/google' ? 'google' : url.pathname.split('/').pop();
+      const state = signJwt({ purpose: 'oauth-state', provider }, 600);
       if (provider === 'google' && process.env.GOOGLE_CLIENT_ID) return redirect(res, `https://accounts.google.com/o/oauth2/v2/auth?${new URLSearchParams({client_id:process.env.GOOGLE_CLIENT_ID,redirect_uri:`${apiUrl}/api/auth/callback/google`,response_type:'code',scope:'openid email profile',state,prompt:'select_account'})}`);
       if (provider === 'apple' && process.env.APPLE_CLIENT_ID) return redirect(res, `https://appleid.apple.com/auth/authorize?${new URLSearchParams({client_id:process.env.APPLE_CLIENT_ID,redirect_uri:`${apiUrl}/api/auth/callback/apple`,response_type:'code',response_mode:'query',scope:'name email',state})}`);
       return send(res, 503, { error: { code: 'PROVIDER_NOT_CONFIGURED', message: `${provider} sign-in is not configured.` } });
     }
     if (req.method === 'GET' && url.pathname.startsWith('/api/auth/callback/')) {
-      const provider=url.pathname.split('/').pop(); const saved=states.get(url.searchParams.get('state')); states.delete(url.searchParams.get('state'));
-      if (!saved || saved.provider!==provider || saved.expires<Date.now()) return redirect(res, `${appUrl}?auth=error`);
+      const provider=url.pathname.split('/').pop(); const saved=verifyJwt(url.searchParams.get('state'));
+      if (!saved || saved.purpose !== 'oauth-state' || saved.provider!==provider) return redirect(res, `${appUrl}?auth=error`);
       const code=url.searchParams.get('code'); let tokenData;
       if (provider==='google') tokenData=await (await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:process.env.GOOGLE_CLIENT_ID,client_secret:process.env.GOOGLE_CLIENT_SECRET,redirect_uri:`${apiUrl}/api/auth/callback/google`,grant_type:'authorization_code'})})).json();
       else tokenData=await (await fetch('https://appleid.apple.com/auth/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:process.env.APPLE_CLIENT_ID,client_secret:process.env.APPLE_CLIENT_SECRET,redirect_uri:`${apiUrl}/api/auth/callback/apple`,grant_type:'authorization_code'})})).json();
+      if (tokenData.error) throw new Error(tokenData.error_description || `${provider} token exchange failed.`);
       let claims;
       if (provider === 'apple') claims = await verifiedAppleClaims(tokenData.id_token);
       else {

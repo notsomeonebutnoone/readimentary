@@ -18,6 +18,12 @@ export default function ChaptersScreen({ currentBook, chapterProgressMap, startC
           <h2 className="text-3xl font-bold tracking-[0.4em] text-white mb-4 uppercase">{currentBook.title}</h2>
           <div className="w-24 h-[1px] bg-amber-500 mx-auto mb-6" />
           <p className="text-white/40 text-[10px] tracking-[0.3em] uppercase">Select Chapter</p>
+          <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[9px] tracking-[0.14em] uppercase text-white/45">
+            <span className={`w-1.5 h-1.5 rounded-full ${currentBook.status === 'processing' ? 'bg-teal-400 animate-pulse' : 'bg-amber-500'}`} />
+            {currentBook.status === 'processing'
+              ? `Parsing page ${currentBook.parsedPages || 1} of ${currentBook.totalPages || '…'} · ${(currentBook.words?.length || 0).toLocaleString()} words ready`
+              : `${(currentBook.words?.length || 0).toLocaleString()} words · ${currentBook.totalPages || currentBook.parsedPages || '—'} pages ready`}
+          </div>
         </div>
 
         <div className="space-y-4">

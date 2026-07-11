@@ -1,7 +1,11 @@
 import crypto from 'node:crypto';
 
 const b64 = (value) => Buffer.from(value).toString('base64url');
-const secret = () => process.env.JWT_SECRET || 'development-only-change-me';
+const secret = () => {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET is required in production.');
+  return 'development-only-change-me';
+};
 
 export function signJwt(payload, expiresInSeconds = 60 * 60 * 24 * 30) {
   const header = b64(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));

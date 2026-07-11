@@ -6,8 +6,8 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
-    "dev:api": "node --watch server/index.mjs",
-    "start:api": "node server/index.mjs",
+    "dev:api": "node --env-file=.env --watch server/index.mjs",
+    "start:api": "node --env-file=.env server/index.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -16,17 +16,17 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
+    "better-sqlite3": "^9.6.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^24.13.3",
+    "electron-is-dev": "^3.0.0",
     "lenis": "^1.3.17",
     "lucide-react": "^0.562.0",
     "pdfjs-dist": "^5.4.624",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-pdf": "^10.3.0",
-    "react-scroll": "^1.9.3",
-    "electron": "^33.0.0",
-    "better-sqlite3": "^9.6.0",
-    "electron-is-dev": "^3.0.0",
-    "electron-builder": "^24.13.3"
+    "react-scroll": "^1.9.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
