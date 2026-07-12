@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { ChevronLeft, Settings, RotateCcw, Pause, Play, Home, Zap } from 'lucide-react';
 import PDFViewer from '../components/app/PDFViewer';
 
@@ -17,9 +17,85 @@ export default function ReaderScreen({
   setIsPlaying,
   setShowSettings,
   setCurrentIndexWithTracking,
+  onSeekWord,
   navigateTo,
   renderWord
 }) {
+  const splitContainerRef = useRef(null);
+  const [pdfPanePercent, setPdfPanePercent] = useState(() => {
+    const saved = Number(window.localStorage.getItem('readimentary-reader-split'));
+    return Number.isFinite(saved) && saved >= 25 && saved <= 75 ? saved : 55;
+  });
+  const [playerHeight, setPlayerHeight] = useState(() => {
+    const saved = Number(window.localStorage.getItem('readimentary-player-height'));
+    const preferred = Number.isFinite(saved) && saved >= 230 ? saved : 410;
+    return Math.max(230, Math.min(window.innerHeight * 0.7, preferred));
+  });
+
+  const setSplit = (nextPercent) => {
+    const clamped = Math.max(25, Math.min(75, nextPercent));
+    setPdfPanePercent(clamped);
+    window.localStorage.setItem('readimentary-reader-split', String(clamped));
+  };
+
+  const beginSplitResize = (event) => {
+    if (window.innerWidth < 768) return;
+    event.preventDefault();
+    const container = splitContainerRef.current;
+    if (!container) return;
+
+    const resize = (pointerEvent) => {
+      const bounds = container.getBoundingClientRect();
+      setSplit(((pointerEvent.clientX - bounds.left) / bounds.width) * 100);
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', resize);
+      window.removeEventListener('pointerup', stop);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', resize);
+    window.addEventListener('pointerup', stop, { once: true });
+  };
+
+  const handleSplitKeyDown = (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    setSplit(pdfPanePercent + (event.key === 'ArrowRight' ? 2 : -2));
+  };
+
+  const setPlayerSize = (nextHeight) => {
+    const maximum = Math.max(260, window.innerHeight * 0.7);
+    const clamped = Math.max(230, Math.min(maximum, nextHeight));
+    setPlayerHeight(clamped);
+    window.localStorage.setItem('readimentary-player-height', String(clamped));
+  };
+
+  const beginPlayerResize = (event) => {
+    event.preventDefault();
+    const resize = (pointerEvent) => setPlayerSize(window.innerHeight - pointerEvent.clientY);
+    const stop = () => {
+      window.removeEventListener('pointermove', resize);
+      window.removeEventListener('pointerup', stop);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('pointermove', resize);
+    window.addEventListener('pointerup', stop, { once: true });
+  };
+
+  const handlePlayerResizeKeyDown = (event) => {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    setPlayerSize(playerHeight + (event.key === 'ArrowUp' ? 20 : -20));
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#050505] overflow-hidden">
       <header className="p-6 flex justify-between items-center border-b border-white/5 backdrop-blur-xl bg-white/5">
@@ -45,9 +121,12 @@ export default function ReaderScreen({
         </button>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div ref={splitContainerRef} className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         {(currentBook?.pdfUrl || currentBook?.pdfData) && (
-          <div className="w-[55%] min-w-[420px] border-r border-white/5 flex-shrink-0">
+          <div
+            className="h-[48%] md:h-full w-full md:w-[var(--pdf-pane-width)] md:flex-none min-h-0 border-b md:border-b-0 border-white/5"
+            style={{ '--pdf-pane-width': `${pdfPanePercent}%` }}
+          >
             <PDFViewer
               pdfUrl={currentBook.pdfUrl}
               pdfData={currentBook.pdfData}
@@ -55,11 +134,31 @@ export default function ReaderScreen({
               totalWords={words.length}
               pageWordMap={currentBook.pageWordMap}
               wordToPage={currentBook.wordToPage}
+              onSeekWord={onSeekWord}
             />
           </div>
         )}
 
-        <main className={`flex-1 flex flex-col items-center justify-center relative bg-[#050505] ${currentBook?.pdfUrl || currentBook?.pdfData ? '' : 'w-full'}`}>
+        {(currentBook?.pdfUrl || currentBook?.pdfData) && (
+          <div
+            role="separator"
+            aria-label="Resize PDF and speed reader panes"
+            aria-orientation="vertical"
+            aria-valuemin={25}
+            aria-valuemax={75}
+            aria-valuenow={Math.round(pdfPanePercent)}
+            tabIndex={0}
+            onPointerDown={beginSplitResize}
+            onKeyDown={handleSplitKeyDown}
+            className="group relative z-30 hidden md:flex w-2 flex-none cursor-col-resize items-center justify-center bg-white/[0.03] hover:bg-amber-500/10 focus:bg-amber-500/10 focus:outline-none"
+            title="Drag to resize panels"
+          >
+            <div className="h-16 w-px bg-white/15 transition-all group-hover:h-24 group-hover:bg-amber-400 group-focus:h-24 group-focus:bg-amber-400" />
+            <span className="absolute h-5 w-1 rounded-full bg-white/30 transition-colors group-hover:bg-amber-400 group-focus:bg-amber-400" />
+          </div>
+        )}
+
+        <main className={`min-w-0 min-h-0 flex-1 flex flex-col items-center justify-center relative bg-[#050505] ${currentBook?.pdfUrl || currentBook?.pdfData ? '' : 'w-full'}`}>
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-full max-w-4xl h-[120px] border-y border-white/5 flex justify-center">
               <div className="w-[2px] h-full bg-amber-500/15 shadow-[0_0_16px_rgba(245,158,11,0.15)]" />
@@ -76,7 +175,27 @@ export default function ReaderScreen({
         </main>
       </div>
 
-      <footer className="p-8 bg-white/5 backdrop-blur-xl border-t border-white/5 flex flex-col items-center gap-6">
+      <div
+        role="separator"
+        aria-label="Resize player controls"
+        aria-orientation="horizontal"
+        aria-valuemin={230}
+        aria-valuemax={Math.round(window.innerHeight * 0.7)}
+        aria-valuenow={Math.round(playerHeight)}
+        tabIndex={0}
+        onPointerDown={beginPlayerResize}
+        onKeyDown={handlePlayerResizeKeyDown}
+        className="group relative z-40 flex h-2 flex-none cursor-row-resize items-center justify-center border-y border-white/5 bg-white/[0.03] hover:bg-amber-500/10 focus:bg-amber-500/10 focus:outline-none"
+        title="Drag to resize player"
+      >
+        <div className="h-px w-20 bg-white/15 transition-all group-hover:w-32 group-hover:bg-amber-400 group-focus:w-32 group-focus:bg-amber-400" />
+        <span className="absolute h-1 w-5 rounded-full bg-white/30 transition-colors group-hover:bg-amber-400 group-focus:bg-amber-400" />
+      </div>
+
+      <footer
+        className="p-5 md:p-8 bg-white/5 backdrop-blur-xl flex flex-none flex-col items-center gap-6 overflow-y-auto"
+        style={{ height: `${playerHeight}px` }}
+      >
         <div className="w-full max-w-4xl">
           <div className="flex justify-between items-end mb-3">
             <span className="text-[10px] font-black text-white/50 tracking-[0.2em] uppercase">Chapter Progress</span>

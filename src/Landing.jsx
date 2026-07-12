@@ -1,14 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { BookOpen, ArrowRight, Check, Zap, Shield, HelpCircle, User, X, ChevronDown, Lock, Globe, Cpu, Menu, Play, Pause, RotateCcw } from 'lucide-react';
+import { BookOpen, ArrowRight, Check, Zap, Shield, HelpCircle, User, X, Lock, Globe, Cpu, Menu, Play, Pause, RotateCcw, Gauge, Layers3, ScanLine, Database, Activity, FileText, Eye } from 'lucide-react';
 import { Link as ScrollLink } from 'react-scroll';
-
-// --- ICONS (Auth) ---
-const GoogleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-);
-const AppleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-);
 
 const TechnicalGrid = () => (
   <svg className="absolute inset-0 w-full h-full opacity-[0.13] pointer-events-none" viewBox="0 0 900 520" preserveAspectRatio="none" aria-hidden="true">
@@ -36,15 +28,80 @@ const SignalChart = ({ value = 70 }) => {
       <defs><linearGradient id={`signal-fill-${value}`} x1="0" y1="0" x2="0" y2="1"><stop stopColor="#f59e0b" stopOpacity=".24"/><stop offset="1" stopColor="#f59e0b" stopOpacity="0"/></linearGradient></defs>
       <g stroke="white" strokeOpacity=".08" strokeWidth=".6"><path d="M0 24h172M0 48h172M0 72h172"/><path d="M43 0v96M86 0v96M129 0v96"/></g>
       <path d={`${path} L166 96 L4 96 Z`} fill={`url(#signal-fill-${value})`} />
-      <path d={path} fill="none" stroke="#f59e0b" strokeWidth="1.5" />
+      <path className="chart-line" d={path} fill="none" stroke="#f59e0b" strokeWidth="1.5" pathLength="1" />
       {points.map((y, index) => <circle key={index} cx={index * 27 + 4} cy={y} r="2.2" fill={index === points.length - 1 ? '#2dd4bf' : '#f59e0b'} />)}
     </svg>
   );
 };
 
+const KineticDataOrb = () => {
+  const marks = useMemo(() => Array.from({ length: 132 }, (_, index) => {
+    const vertical = 1 - (2 * (index + 0.5)) / 132;
+    const radius = Math.sqrt(1 - vertical * vertical);
+    const angle = index * 2.399963;
+    const x = Math.cos(angle) * radius;
+    const depth = Math.sin(angle) * radius;
+    return {
+      x: 240 + x * 184,
+      y: 240 + vertical * 184,
+      depth,
+      height: 3 + (index % 5) * 2.2,
+      glyph: index % 11 === 0
+    };
+  }), []);
+
+  return (
+    <div className="kinetic-orb" aria-hidden="true">
+      <svg viewBox="0 0 480 480" className="w-full h-full">
+        <defs>
+          <radialGradient id="orb-core"><stop offset="0" stopColor="#f59e0b" stopOpacity=".12"/><stop offset=".58" stopColor="#2dd4bf" stopOpacity=".035"/><stop offset="1" stopColor="#050505" stopOpacity="0"/></radialGradient>
+          <clipPath id="orb-clip"><circle cx="240" cy="240" r="190"/></clipPath>
+        </defs>
+        <circle cx="240" cy="240" r="208" fill="url(#orb-core)"/>
+        <g className="kinetic-orb-grid" fill="none" stroke="white">
+          <ellipse cx="240" cy="240" rx="188" ry="64" strokeOpacity=".06"/>
+          <ellipse cx="240" cy="240" rx="188" ry="122" strokeOpacity=".045"/>
+          <ellipse cx="240" cy="240" rx="72" ry="188" strokeOpacity=".055"/>
+          <ellipse cx="240" cy="240" rx="132" ry="188" strokeOpacity=".035"/>
+        </g>
+        <g clipPath="url(#orb-clip)" className="kinetic-orb-marks">
+          {marks.map((mark, index) => mark.glyph ? (
+            <text key={index} x={mark.x} y={mark.y} fill={mark.depth > 0 ? '#f59e0b' : '#ffffff'} fillOpacity={0.12 + ((mark.depth + 1) / 2) * 0.36} fontSize="7" fontFamily="monospace">{index % 22 === 0 ? 'T' : '⌁'}</text>
+          ) : (
+            <rect key={index} x={mark.x} y={mark.y} width={index % 4 === 0 ? 3 : 1.4} height={mark.height} rx=".7" fill={mark.depth > .15 ? '#2dd4bf' : '#ffffff'} fillOpacity={0.08 + ((mark.depth + 1) / 2) * 0.42}/>
+          ))}
+        </g>
+        <circle cx="240" cy="240" r="190" fill="none" stroke="#f59e0b" strokeOpacity=".16" strokeDasharray="2 11"/>
+        <path className="kinetic-orb-scan" d="M46 240h388" stroke="#2dd4bf" strokeOpacity=".35" strokeWidth="1"/>
+        <g fill="#f59e0b"><circle cx="84" cy="126" r="2"/><circle cx="396" cy="318" r="2"/><circle cx="318" cy="68" r="1.6"/></g>
+      </svg>
+    </div>
+  );
+};
+
+const CharacterRail = ({ mousePos, activeSectionId }) => {
+  const eyeX = (mousePos.x - .5) * 8;
+  const eyeY = (mousePos.y - .5) * 5;
+  const colors = ['#fbbf24', '#2dd4bf', '#f472b6'];
+  return <aside className={`character-rail ${activeSectionId === 'hero' ? '' : 'is-following'}`} aria-hidden="true">
+    {colors.map((color, index) => <div key={color} className={`rail-character rail-character-${index}`} style={{'--rail-color':color,'--rail-delay':`${index * 120}ms`}}>
+      <svg viewBox="0 0 92 116">
+        <ellipse cx="46" cy="108" rx="27" ry="4" fill="#000" opacity=".55"/>
+        <path d="M25 50h42l8 54H17z" fill="#171717" stroke={color} strokeOpacity=".28"/>
+        <rect x="20" y="15" width="52" height="42" rx="8" fill="#242424" stroke={color} strokeOpacity=".5"/>
+        <rect x="28" y="24" width="36" height="24" rx="5" fill="#050505"/>
+        <g style={{transform:`translate(${eyeX}px,${eyeY}px)`,transformOrigin:'46px 36px',transition:'transform 90ms linear'}}>
+          <circle cx="39" cy="36" r="3" fill={color}/><circle cx="53" cy="36" r="3" fill={color}/>
+        </g>
+        <path d="M34 70h24M31 80h30M36 90h20" stroke={color} strokeOpacity=".35"/>
+      </svg>
+    </div>)}
+  </aside>;
+};
+
 // --- HELPER COMPONENTS ---
 const SectionHeader = ({ title, subtitle }) => (
-  <div className="mb-10 text-center pt-12">
+  <div className="mb-8 text-center pt-6">
     <h2 className="text-3xl font-bold tracking-[0.4em] text-white mb-4 uppercase">{title}</h2>
     <div className="w-24 h-[1px] bg-amber-500 mx-auto mb-6" />
     <p className="text-white/40 text-[10px] tracking-[0.3em] uppercase">{subtitle}</p>
@@ -75,20 +132,6 @@ const NavLink = ({ children, targetId, delay, onNavigate }) => {
 
 
 
-const SocialLoginButton = ({ children, icon, onClick }) => (
-  <div className="relative inline-block group w-full">
-    <button
-      onClick={onClick}
-      className="relative z-10 flex items-center gap-3 w-full backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-6 py-4 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase"
-    >
-      <span className="shrink-0">{icon}</span>
-      <span className="flex-1 text-left">{children}</span>
-      <ArrowRight size={14} className="shrink-0" />
-    </button>
-    <div className="absolute inset-0 border border-amber-500/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
-  </div>
-);
-
 const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, color = "amber" }) => {
   const colorStyles = {
     amber: "bg-amber-500/10 border-amber-500/30 text-amber-500",
@@ -110,7 +153,7 @@ const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, col
   );
 };
 
-export default function Landing({ onEnter = () => {}, onEmailAuth = async () => {}, onOAuth = async () => {}, onCheckout = async () => {}, user = null, authError = '', loginRequestKey = 0 }) {
+export default function Landing({ onEnter = () => {}, onEmailAuth = async () => {}, user = null, authError = '', loginRequestKey = 0 }) {
   const containerRef = useRef(null);
   const mainFigureRef = useRef(null);
   const backFigureRef = useRef(null);
@@ -118,13 +161,11 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
   const breatheFrameRef = useRef(null);
 
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
-  const [activeFaq, setActiveFaq] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
-  const [authMode, setAuthMode] = useState('login');
   const [authBusy, setAuthBusy] = useState(false);
   const [featuresHighlighted, setFeaturesHighlighted] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState('hero');
@@ -239,6 +280,18 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
+    @keyframes revealElement { from { opacity: 0; transform: translateY(28px) scale(.975); filter: blur(7px); } to { opacity: 1; transform: none; filter: none; } }
+    @keyframes drawFigure { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+    @keyframes fillBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    @keyframes drawRing { from { stroke-dashoffset: 1; } to { stroke-dashoffset: var(--ring-end); } }
+    @keyframes iconAlive { 0%,100% { transform: translateY(0) rotate(0); filter: drop-shadow(0 0 0 transparent); } 50% { transform: translateY(-3px) rotate(2deg); filter: drop-shadow(0 0 7px currentColor); } }
+    .scroll-reveal { opacity: 0; transform: translateY(28px) scale(.975); filter: blur(7px); }
+    .scroll-reveal.is-visible { animation: revealElement .8s cubic-bezier(.16,1,.3,1) both; animation-delay: var(--reveal-delay, 0ms); }
+    .scroll-reveal svg path, .scroll-reveal svg circle { vector-effect: non-scaling-stroke; }
+    .scroll-reveal.is-visible .chart-line { stroke-dasharray: 1; animation: drawFigure 1.25s cubic-bezier(.16,1,.3,1) both; animation-delay: calc(var(--reveal-delay, 0ms) + 180ms); }
+    .scroll-reveal.is-visible .h-full[class*="bg-gradient"], .scroll-reveal.is-visible .data-bar { transform-origin: left; animation: fillBar 1.15s cubic-bezier(.16,1,.3,1) both; animation-delay: calc(var(--reveal-delay, 0ms) + 220ms); }
+    .scroll-reveal.is-visible .metric-ring { animation: drawRing 1.5s cubic-bezier(.16,1,.3,1) both; animation-delay: calc(var(--reveal-delay, 0ms) + 240ms); }
+    .scroll-reveal.is-visible svg:not(.kinetic-orb svg) { animation: iconAlive 4.8s ease-in-out 1.2s infinite; }
     .animate-boot-1 { animation: charBoot 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.3s both; }
     .animate-boot-2 { animation: charBoot 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s both; }
     .animate-boot-3 { animation: charBoot 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.7s both; }
@@ -262,6 +315,10 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       animation: marquee 24s linear infinite;
       will-change: transform;
     }
+    @keyframes orbDrift { 0%, 100% { transform: translate3d(0,0,0) rotate(-3deg); } 50% { transform: translate3d(-18px,14px,0) rotate(3deg); } }
+    @keyframes orbMarks { to { transform: rotate(360deg); } }
+    @keyframes orbCounter { to { transform: rotate(-360deg); } }
+    @keyframes orbScan { 0%,100% { transform: translateY(-128px); opacity: .12; } 50% { transform: translateY(128px); opacity: .7; } }
     .marquee-group {
       display: flex;
       flex-shrink: 0;
@@ -271,6 +328,16 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       gap: 3rem;
       padding-right: 3rem;
     }
+    .kinetic-orb { position: absolute; width: min(68vw, 760px); aspect-ratio: 1; right: -7vw; top: 5%; opacity: .46; filter: drop-shadow(0 0 44px rgba(245,158,11,.05)); animation: orbDrift 11s ease-in-out infinite; will-change: transform; }
+    .kinetic-orb-marks { transform-origin: 240px 240px; animation: orbMarks 44s linear infinite; }
+    .kinetic-orb-grid { transform-origin: 240px 240px; animation: orbCounter 62s linear infinite; }
+    .kinetic-orb-scan { animation: orbScan 6.5s ease-in-out infinite; }
+    .character-rail { position: fixed; left: 14px; top: 50%; z-index: 45; display: flex; flex-direction: column; gap: 7px; transform: translate(-125%,-50%); opacity: 0; transition: transform .8s cubic-bezier(.16,1,.3,1), opacity .5s ease; pointer-events: none; }
+    .character-rail.is-following { transform: translate(0,-50%); opacity: .9; }
+    .rail-character { width: 58px; height: 70px; padding: 5px; border: 1px solid color-mix(in srgb, var(--rail-color) 25%, transparent); border-radius: 14px; background: rgba(8,8,8,.72); backdrop-filter: blur(12px); box-shadow: 0 0 25px color-mix(in srgb, var(--rail-color) 7%, transparent); animation: featureCardFloat 4s ease-in-out infinite; animation-delay: var(--rail-delay); transition: transform .3s ease, opacity .3s ease; }
+    .rail-character:nth-child(2) { margin-left: 9px; }.rail-character:nth-child(3) { margin-left: 2px; }
+    @media (max-width: 768px) { .kinetic-orb { width: 680px; right: -360px; top: 9%; opacity: .25; } .character-rail { left: 5px; opacity: .55; transform: translate(-20%,-50%) scale(.72); transform-origin: left center; } .character-rail:not(.is-following){opacity:0;transform:translate(-125%,-50%) scale(.72)} }
+    @media (prefers-reduced-motion: reduce) { .kinetic-orb, .kinetic-orb-marks, .kinetic-orb-grid, .kinetic-orb-scan, .scroll-reveal, .scroll-reveal * { animation: none !important; } .scroll-reveal { opacity: 1; transform: none; filter: none; } }
     section[id] { scroll-margin-top: 100px; }
   `;
 
@@ -282,6 +349,28 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     target.addEventListener('scroll', handleScroll);
     handleScroll();
     return () => target.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Reveal every meaningful landing element as it enters the scroll viewport.
+  useEffect(() => {
+    const scrollContainer = document.getElementById('landing-scroll-container');
+    const root = containerRef.current;
+    if (!root) return;
+    const elements = root.querySelectorAll('section:not(#hero) article, section:not(#hero) > div, footer > div');
+    elements.forEach((element, index) => {
+      element.classList.add('scroll-reveal');
+      element.style.setProperty('--reveal-delay', `${(index % 4) * 75}ms`);
+    });
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { root: scrollContainer || null, threshold: 0.12, rootMargin: '0px 0px -7% 0px' });
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -412,7 +501,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     e.preventDefault();
     setAuthBusy(true);
     try {
-      await onEmailAuth({ email, password, mode: authMode, rememberMe });
+      await onEmailAuth({ email, password, rememberMe });
     } catch {
       // The parent renders the uniform API error in this modal.
     } finally {
@@ -425,93 +514,12 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     setTimeout(() => setFeaturesHighlighted(false), 1800);
   };
 
-  const pricingPlans = [
-    { name: "Free Tier", price: "0", color: "amber", id: "pricing", eyebrow: "A focused starting point", description: "Everything you need to experience the complete reading engine with one permanent document slot.", features: ["1 active PDF slot", "Full RSVP reader", "300–900 WPM control", "ORP focal highlighting", "Chapter detection", "Local reading progress"] },
-    { name: "Lifetime Access", price: "10", color: "teal", id: "pricing", eyebrow: "Pay once. Read without limits.", description: "Unlock an unlimited personal reading library with every current and future core reader feature.", badge: "Best value", features: ["Unlimited PDF library", "Everything in Free", "Background stream parsing", "Cross-session analytics", "Priority feature access", "One-time secure payment"] }
-  ];
-
-  const featureCapabilities = [
-    { icon: <Zap size={19} />, code: "01", title: "Instant first page", text: "Start reading as soon as the opening page is extracted while the remaining document continues processing." },
-    { icon: <Cpu size={19} />, code: "02", title: "Adaptive ORP mapping", text: "Each token is optically aligned around its recognition point to keep your gaze anchored at speed." },
-    { icon: <BookOpen size={19} />, code: "03", title: "Chapter intelligence", text: "Structural cues are converted into navigable chapters with independent progress and resume positions." },
-    { icon: <Shield size={19} />, code: "04", title: "Local-first documents", text: "Your PDF bytes and extracted reading stream remain inside your browser rather than a remote file vault." },
-    { icon: <Globe size={19} />, code: "05", title: "Browser-native flow", text: "No reader extension or specialist hardware—upload, calibrate your pace, and continue from any modern browser." },
-    { icon: <Lock size={19} />, code: "06", title: "Durable progress", text: "Reader position, chapter completion, settings, and session analytics persist between focused sessions." }
-  ];
-
-  const ingestionSteps = [
-    { step: "01", title: "Ingest", text: "Validate and secure the PDF locally" },
-    { step: "02", title: "Extract", text: "Release page one into the word stream" },
-    { step: "03", title: "Map", text: "Calculate ORP, chapters, and page indices" },
-    { step: "04", title: "Read", text: "Advance while parsing stays ahead of you" }
-  ];
-
   const whyReadimentary = [
     { index: "01", kicker: "Reading without visual drag", title: "One focal point replaces an entire page of movement.", text: "Readimentary controls where every word appears, reducing the repeated left-to-right scanning that consumes attention before comprehension even begins.", metric: "0 px", metricLabel: "required gaze travel" },
     { index: "02", kicker: "Start before processing ends", title: "Your first page becomes readable while the rest is still arriving.", text: "The ingestion engine releases useful text immediately, then builds page maps, chapter structure, and word totals in the background ahead of your pace.", metric: "1st", metricLabel: "page released live" },
     { index: "03", kicker: "A pace that belongs to you", title: "Move from calm comprehension to high-speed review in one control.", text: "Adjust the presentation rate for dense research, everyday nonfiction, or rapid recall without changing tools or losing your place.", metric: "900+", metricLabel: "WPM ceiling" }
   ];
 
-  const readingWorkflows = [
-    { number: "01", label: "Deep Work", title: "The focused chapter sprint", description: "Remove page furniture, lock onto the ORP rail, and move through a chapter in a distraction-resistant reading block.", meta: ["350–450 WPM", "Chapter resume", "Session analytics"], color: "amber" },
-    { number: "02", label: "Research", title: "The high-volume first pass", description: "Build a fast mental map of reports, papers, and long-form material before returning to the passages that need close analysis.", meta: ["500–700 WPM", "Page sync", "Rapid overview"], color: "teal" },
-    { number: "03", label: "Learning", title: "The repeatable study rhythm", description: "Use predictable word timing and chapter progress to turn a dense reading list into measurable daily sessions.", meta: ["300–500 WPM", "Progress history", "Keyboard control"], color: "pink" },
-    { number: "04", label: "Review", title: "The last-mile knowledge scan", description: "Revisit familiar material at elevated speed and keep your attention on meaning instead of finding the next line.", meta: ["600–900 WPM", "Instant replay", "Focal lock"], color: "amber" }
-  ];
-
-
-  const faqs = [
-    { q: "What is RSVP reading?", a: "RSVP (Rapid Serial Visual Presentation) shows one word at a time in a fixed position so you can reduce eye movement and maintain reading flow." },
-    { q: "What happens to my document data?", a: "PDF bytes and extracted reading data stay in your browser. The API stores only account, entitlement, and processing metadata needed to enforce your workspace tier." },
-    { q: "Is this good for every type of reading?", a: "RSVP is best for linear content like articles, essays, and nonfiction. For dense math, code, or poetry, traditional reading may still be better." }
-  ];
-
-  const testimonials = [
-    { quote: "I stopped bouncing between lines and finally stay locked in.", name: "Maya L.", role: "Product Designer" },
-    { quote: "The chapter flow and WPM controls make this my daily reading app.", name: "Chris D.", role: "CS Student" },
-    { quote: "Perfect for nonfiction and docs when I need speed and focus.", name: "Jordan R.", role: "Operations Lead" }
-  ];
-
-  const readingSignals = [
-    { value: "< 2 min", label: "Instant ingestion", note: "Begin on page one while background-stream parsing continues.", meter: 92, meta: "Upload → readable" },
-    { value: "300–600", label: "Target WPM tiers", note: "Tune throughput to match the density of each document.", meter: 68, meta: "Sustained pace" },
-    { value: "100%", label: "Focal drift lock", note: "Optically centered word mapping keeps the recognition point fixed.", meter: 100, meta: "ORP alignment" },
-    { value: "0", label: "Cloud PDF copies", note: "Document bytes stay local to your browser and personal device.", meter: 100, meta: "Local-first privacy" },
-    { value: "1 word", label: "Visual payload", note: "A deliberately minimal viewport removes line tracking and page noise.", meter: 86, meta: "Per presentation frame" },
-    { value: "Live", label: "Progress telemetry", note: "Pages, word totals, chapter status, and completion update as you read.", meter: 78, meta: "Continuous feedback" }
-  ];
-
-  const pricingComparison = [
-    { label: "Active PDF slots", free: "1", paid: "Unlimited" },
-    { label: "RSVP + ORP engine", free: "Included", paid: "Included" },
-    { label: "Streaming ingestion", free: "Included", paid: "Included" },
-    { label: "Library expansion", free: "—", paid: "Unlimited" },
-    { label: "Billing", free: "$0 forever", paid: "$10 once" }
-  ];
-
-  const planStyles = {
-    amber: {
-      border: 'hover:border-amber-500/30',
-      text: 'text-amber-500',
-      icon: 'text-amber-500'
-    },
-    teal: {
-      border: 'hover:border-teal-500/30',
-      text: 'text-teal-500',
-      icon: 'text-teal-500'
-    },
-    pink: {
-      border: 'hover:border-pink-500/30',
-      text: 'text-pink-500',
-      icon: 'text-pink-500'
-    }
-  };
-
-  const workflowStyles = {
-    amber: { text: 'text-amber-500', border: 'group-hover:border-amber-500/30', glow: 'from-amber-500/20' },
-    teal: { text: 'text-teal-400', border: 'group-hover:border-teal-500/30', glow: 'from-teal-500/20' },
-    pink: { text: 'text-pink-400', border: 'group-hover:border-pink-500/30', glow: 'from-pink-500/20' }
-  };
 
   return (
     <div ref={containerRef} className="relative min-h-screen bg-[#050505] overflow-x-hidden font-sans text-white scroll-smooth">
@@ -524,6 +532,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         }}
       />
       <div className="absolute inset-0 z-0 pointer-events-none bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(5,5,5,0.2)_30%,rgba(5,5,5,0.9)_100%)]" />
+      <CharacterRail mousePos={mousePos} activeSectionId={activeSectionId} />
 
       {/* --- FIXED VIEWPORT WRAPPER (CENTERING ANCHOR) --- */}
       <div className="fixed top-0 left-0 w-full flex justify-center z-[100]">
@@ -547,18 +556,16 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             <div className="hidden md:flex items-center justify-center gap-10 flex-[2]">
               <NavLink targetId="features" delay="0.4s" onNavigate={highlightFeatures}>Features</NavLink>
               <NavLink targetId="pricing" delay="0.5s">Pricing</NavLink>
-              <NavLink targetId="faq" delay="0.6s">FAQ</NavLink>
-              <NavLink targetId="docs" delay="0.7s">Docs</NavLink>
             </div>
 
             {/* Right Side */}
             <div className="flex justify-end flex-1">
               <div className="relative inline-block group">
                 <button
-                  onClick={() => user ? onEnter() : setShowLogin(true)}
+                  onClick={() => setShowLogin(true)}
                   className="relative z-10 flex items-center gap-2 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-5 py-2 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-[9px] uppercase"
                 >
-                  {user ? 'OPEN READER' : 'START'} <ArrowRight size={12} />
+                  START <ArrowRight size={12} />
                 </button>
                 <div className="absolute inset-0 border border-amber-500/10 translate-x-1 translate-y-1 z-0 transition-transform duration-300 group-hover:translate-x-1.5 group-hover:translate-y-1.5" />
               </div>
@@ -571,6 +578,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center pt-20">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[800px] h-[600px] bg-gradient-to-r from-pink-600/5 via-amber-600/5 to-teal-600/5 rounded-full blur-[120px] opacity-30" />
+          <KineticDataOrb />
         </div>
 
         <div className="w-full max-w-7xl px-6 mb-10 flex flex-col items-center text-center z-10">
@@ -680,7 +688,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
       </div>
 
-      <section className="relative py-28 px-6 max-w-7xl mx-auto overflow-hidden">
+      <section className="relative py-16 md:py-20 px-6 max-w-7xl mx-auto overflow-hidden">
         <div className="absolute left-6 right-6 top-28 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
         <div className="grid lg:grid-cols-[0.72fr_1.28fr] gap-12 lg:gap-20 items-start mb-16">
           <div className="lg:sticky lg:top-28">
@@ -713,7 +721,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
       </section>
 
-      <section id="features" className="py-24 border-t border-white/5">
+      <section id="features" className="py-14 md:py-18 border-t border-white/5">
         <div
           className={`relative w-full transition-all duration-500 ${
             featuresHighlighted ? 'ring-1 ring-amber-500/50 bg-amber-500/[0.03]' : ''
@@ -774,10 +782,10 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full bg-white/40 rounded-full" style={{ width: `${item.traditional}%` }} />
+                            <div className="data-bar h-full bg-white/40 rounded-full" style={{ width: `${item.traditional}%` }} />
                           </div>
                           <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-amber-500/75 to-teal-400/65 rounded-full" style={{ width: `${item.rsvp}%` }} />
+                            <div className="data-bar h-full bg-gradient-to-r from-amber-500/75 to-teal-400/65 rounded-full" style={{ width: `${item.rsvp}%` }} />
                           </div>
                         </div>
                       </div>
@@ -790,19 +798,35 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-7">
                   <div>
                     <p className="text-[9px] tracking-[0.24em] uppercase text-amber-500/80 font-bold mb-2">Engine capability map</p>
-                    <h3 className="text-xl md:text-2xl font-bold tracking-tight text-white">One calm interface. Six systems working underneath.</h3>
+                    <h3 className="text-xl md:text-3xl font-bold tracking-tight text-white">Everything you need.<br/><span className="text-white/35">Nothing between you and the words.</span></h3>
                   </div>
-                  <p className="text-xs leading-relaxed text-white/45 max-w-md">Built to remove the operational friction between opening a document and entering a focused reading rhythm.</p>
+                  <p className="text-xs leading-relaxed text-white/45 max-w-md">A complete reading pipeline expressed through four purpose-built systems—each with its own behavior, visual language, and job.</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {featureCapabilities.map((feature) => (
-                    <div key={feature.code} className="group relative min-h-52 rounded-2xl border border-white/10 bg-black/25 p-6 overflow-hidden hover:border-amber-500/30 hover:bg-amber-500/[0.035] transition-all duration-300">
-                      <div className="absolute top-4 right-5 text-[10px] font-mono text-white/20">{feature.code}</div>
-                      <div className="w-10 h-10 rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-500 flex items-center justify-center mb-8 group-hover:scale-105 transition-transform">{feature.icon}</div>
-                      <h4 className="text-sm font-bold tracking-[0.08em] uppercase text-white mb-3">{feature.title}</h4>
-                      <p className="text-xs leading-6 text-white/50">{feature.text}</p>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 auto-rows-[minmax(210px,auto)]">
+                  <article className="group lg:col-span-7 lg:row-span-2 relative rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.09] via-black/30 to-black/60 p-7 md:p-9 overflow-hidden hover:border-amber-500/40 transition-colors">
+                    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(rgba(245,158,11,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,.18) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
+                    <div className="relative flex items-center justify-between mb-12"><span className="text-[9px] font-mono tracking-[0.2em] text-amber-500">01 / STREAM CORE</span><Zap size={20} className="text-amber-500" /></div>
+                    <div className="relative grid md:grid-cols-[1fr_210px] gap-8 items-end">
+                      <div><h4 className="text-2xl md:text-3xl font-black tracking-tight text-white mb-4">Page one arrives first.</h4><p className="text-sm leading-7 text-white/55 max-w-lg">The worker releases readable tokens from the opening page immediately. Page maps, chapters, and totals continue assembling in the background while your session is already moving.</p></div>
+                      <svg viewBox="0 0 210 210" className="w-full max-w-[210px] mx-auto" aria-hidden="true"><circle cx="105" cy="105" r="76" fill="#f59e0b" fillOpacity=".05" stroke="#f59e0b" strokeOpacity=".25"/><circle cx="105" cy="105" r="50" fill="none" stroke="#f59e0b" strokeOpacity=".35" strokeDasharray="4 7"/><path d="M105 20v38M105 152v38M20 105h38M152 105h38" stroke="#f59e0b" strokeOpacity=".45"/><rect x="82" y="72" width="46" height="66" rx="5" fill="#090909" stroke="#f59e0b" strokeOpacity=".6"/><path d="M91 88h28M91 99h22M91 110h26M91 121h16" stroke="#f59e0b" strokeOpacity=".65"/><circle cx="105" cy="105" r="4" fill="#2dd4bf"/></svg>
                     </div>
-                  ))}
+                    <div className="relative mt-9 flex items-center gap-3 text-[9px] uppercase tracking-[0.15em] text-white/35"><span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"/> Reader ready before document completion</div>
+                  </article>
+
+                  <article className="group lg:col-span-5 relative rounded-3xl border border-teal-500/20 bg-teal-500/[0.045] p-7 overflow-hidden hover:border-teal-500/40 transition-colors">
+                    <div className="flex items-start justify-between mb-6"><div><span className="text-[9px] font-mono tracking-[0.2em] text-teal-400">02 / OPTICAL MAP</span><h4 className="text-xl font-bold text-white mt-3">Adaptive ORP alignment</h4></div><Eye size={20} className="text-teal-400"/></div>
+                    <div className="relative h-20 rounded-xl border-y border-white/[0.07] flex items-center justify-center mb-5"><div className="absolute h-full w-px bg-teal-400/60"/><div className="text-3xl font-serif tracking-tight"><span className="text-white/35">fo</span><span className="text-teal-400 font-bold">c</span><span className="text-white/35">used</span></div></div>
+                    <p className="text-xs leading-6 text-white/50">Every token is measured and positioned around its optimal recognition point, keeping the eye anchored as word length changes.</p>
+                  </article>
+
+                  <article className="group lg:col-span-3 relative rounded-3xl border border-white/10 bg-white/[0.025] p-6 overflow-hidden hover:border-pink-500/30 transition-colors">
+                    <Layers3 size={19} className="text-pink-400 mb-7"/><div className="text-[9px] font-mono text-white/25 mb-2">03 / STRUCTURE</div><h4 className="text-lg font-bold text-white mb-3">Chapter intelligence</h4><p className="text-xs leading-5 text-white/45">Headings become navigable sections with independent progress.</p>
+                    <div className="mt-6 space-y-2">{[72,48,86].map((width,index)=><div key={width} className="flex items-center gap-2"><span className="text-[8px] text-white/20">0{index+1}</span><div className="h-1 rounded-full bg-pink-400/30" style={{width:`${width}%`}}/></div>)}</div>
+                  </article>
+
+                  <article className="group lg:col-span-2 relative rounded-3xl border border-white/10 bg-black/35 p-6 overflow-hidden hover:border-white/25 transition-colors">
+                    <Lock size={18} className="text-amber-500 mb-7"/><div className="text-[9px] font-mono text-white/25 mb-2">04 / LOCAL</div><h4 className="text-base font-bold text-white mb-3">Private by architecture</h4><p className="text-[11px] leading-5 text-white/40">PDF bytes stay inside IndexedDB on your device.</p><div className="absolute bottom-5 right-5 w-9 h-9 rounded-full border border-amber-500/20 flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-amber-500"/></div>
+                  </article>
                 </div>
               </div>
 
@@ -811,15 +835,14 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                   <div className="w-2 h-2 rounded-full bg-teal-400 shadow-[0_0_14px_rgba(45,212,191,0.8)]" />
                   <span className="text-[10px] tracking-[0.22em] uppercase font-bold text-white/60">Live ingestion sequence</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  {ingestionSteps.map((item, index) => (
-                    <div key={item.step} className="relative rounded-xl border border-white/10 bg-black/20 p-5">
-                      {index < ingestionSteps.length - 1 && <div className="hidden md:block absolute top-8 -right-3 w-3 h-px bg-white/20" />}
-                      <div className="text-[9px] font-mono text-teal-400/80 mb-5">STEP {item.step}</div>
-                      <div className="text-xs font-bold tracking-[0.12em] uppercase text-white mb-2">{item.title}</div>
-                      <p className="text-[11px] leading-5 text-white/45">{item.text}</p>
-                    </div>
-                  ))}
+                <div className="relative grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-4 md:gap-2 items-center">
+                  <div className="rounded-2xl bg-black/25 p-5"><div className="w-8 h-8 rounded-full border border-amber-500/30 flex items-center justify-center text-[9px] font-mono text-amber-500 mb-4">I</div><b className="block text-xs uppercase tracking-[0.12em] text-white mb-2">Ingest locally</b><p className="text-[10px] leading-5 text-white/40">Validate the PDF without sending its bytes to a cloud vault.</p></div>
+                  <ArrowRight size={14} className="hidden md:block text-white/20"/>
+                  <div className="border-l-2 border-teal-400/40 pl-5 py-3"><div className="flex items-center gap-2 text-[9px] font-mono text-teal-400 mb-4"><span className="w-2 h-2 bg-teal-400 animate-pulse"/> LIVE</div><b className="block text-xs uppercase tracking-[0.12em] text-white mb-2">Release page one</b><p className="text-[10px] leading-5 text-white/40">The first readable word array enters the player immediately.</p></div>
+                  <ArrowRight size={14} className="hidden md:block text-white/20"/>
+                  <div className="relative p-5"><div className="absolute top-5 right-5 w-7 h-7 rotate-45 border border-pink-500/30"/><div className="text-[9px] font-mono text-pink-400 mb-5">MAP / 03</div><b className="block text-xs uppercase tracking-[0.12em] text-white mb-2">Build structure</b><p className="text-[10px] leading-5 text-white/40">Index pages, chapters, sentences, and optical anchors.</p></div>
+                  <ArrowRight size={14} className="hidden md:block text-white/20"/>
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><div className="flex items-center justify-between mb-4"><span className="text-[9px] font-mono text-white/30">READ / 04</span><Play size={13} className="text-amber-500"/></div><b className="block text-xs uppercase tracking-[0.12em] text-white mb-2">Stay ahead</b><p className="text-[10px] leading-5 text-white/40">Background parsing continues beyond the reader’s current pace.</p></div>
                 </div>
               </div>
 
@@ -853,40 +876,41 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
       </div>
 
-      <section className="py-28 px-6 max-w-7xl mx-auto border-t border-white/5">
+      <section className="py-16 md:py-20 px-6 max-w-7xl mx-auto border-t border-white/5">
         <SectionHeader title="Reading Signals" subtitle="A clearer sense of value at a glance" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {readingSignals.map((signal) => (
-            <div key={signal.label} className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-7 hover:border-amber-500/25 transition-colors">
-              <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-amber-500/10 blur-2xl" />
-              <div className="relative">
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="text-3xl md:text-4xl font-black tracking-tight text-white">{signal.value}</div>
-                  <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-[9px] font-mono text-white/30 group-hover:text-amber-500/80 group-hover:border-amber-500/20 transition-colors">↗</div>
-                </div>
-                <div className="text-[10px] tracking-[0.22em] uppercase text-amber-500/80 font-bold mb-4">{signal.label}</div>
-                <p className="text-sm leading-relaxed text-white/60 min-h-16">{signal.note}</p>
-                <div className="mt-4 rounded-xl border border-white/[0.06] bg-black/20 px-3 pt-2 overflow-hidden"><SignalChart value={signal.meter} /></div>
-                <div className="mt-6 pt-5 border-t border-white/10">
-                  <div className="flex justify-between text-[9px] tracking-[0.14em] uppercase text-white/35 mb-2"><span>{signal.meta}</span><span>{signal.meter}%</span></div>
-                  <div className="h-1 rounded-full bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-teal-400" style={{ width: `${signal.meter}%` }} /></div>
-                </div>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <article className="lg:col-span-8 relative rounded-3xl border border-white/10 bg-[#090909] overflow-hidden p-7 md:p-9 min-h-[390px]">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5 mb-8"><div><div className="flex items-center gap-2 text-[9px] tracking-[0.18em] uppercase text-teal-400 mb-3"><Activity size={13}/> Live reading telemetry</div><h3 className="text-2xl md:text-3xl font-black text-white">Performance you can see.</h3></div><div className="flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/[0.06] px-3 py-2 text-[8px] uppercase tracking-[0.15em] text-teal-400"><span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"/> Session active</div></div>
+            <div className="grid sm:grid-cols-[1fr_1.6fr] gap-7 items-end">
+              <div><div className="text-6xl md:text-7xl font-black tracking-[-0.07em] text-white">450</div><div className="text-xs tracking-[0.2em] uppercase text-amber-500 mt-2">words per minute</div><p className="text-xs leading-6 text-white/40 mt-5">A productive default for fluent nonfiction—fast enough to create momentum, controlled enough to preserve context.</p></div>
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4"><SignalChart value={92}/><div className="grid grid-cols-3 gap-2 mt-2 text-center"><div><b className="block text-sm text-white">01:42</b><span className="text-[8px] uppercase text-white/25">elapsed</span></div><div><b className="block text-sm text-white">734</b><span className="text-[8px] uppercase text-white/25">words</span></div><div><b className="block text-sm text-teal-400">92%</b><span className="text-[8px] uppercase text-white/25">focus</span></div></div></div>
             </div>
-          ))}
-        </div>
-        <div className="mt-5 grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-white/10 bg-black/30 overflow-hidden">
-          {[['450 WPM', 'Live demo pace'], ['Page 1', 'Immediate release'], ['ORP', 'Optical anchor'], ['24 / 7', 'Local availability']].map(([value, label], index) => (
-            <div key={label} className={`p-6 text-center ${index ? 'border-l border-white/10' : ''}`}>
-              <div className="text-lg font-mono text-white mb-2">{value}</div>
-              <div className="text-[9px] tracking-[0.16em] uppercase text-white/35">{label}</div>
-            </div>
-          ))}
+          </article>
+
+          <article className="lg:col-span-4 rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.08] to-black/30 p-7 flex flex-col justify-between min-h-[390px]">
+            <div className="flex items-center justify-between"><span className="text-[9px] font-mono text-amber-500">PACE ENVELOPE</span><Gauge size={20} className="text-amber-500"/></div>
+            <div className="relative w-48 h-48 mx-auto my-5"><svg viewBox="0 0 200 200" className="w-full h-full -rotate-90"><circle cx="100" cy="100" r="76" fill="none" stroke="white" strokeOpacity=".06" strokeWidth="12"/><circle className="metric-ring" cx="100" cy="100" r="76" pathLength="1" fill="none" stroke="#f59e0b" strokeWidth="12" strokeLinecap="round" strokeDasharray=".72 .28" style={{'--ring-end':'.28'}}/></svg><div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-black text-white">300–900</span><span className="text-[9px] uppercase tracking-[0.18em] text-white/30 mt-2">WPM range</span></div></div>
+            <p className="text-xs leading-6 text-white/45">Dial down for technical density. Accelerate for review. The same focal rail supports every tier.</p>
+          </article>
+
+          <article className="lg:col-span-4 rounded-3xl border border-teal-500/20 bg-teal-500/[0.035] p-7 min-h-[245px]">
+            <ScanLine size={20} className="text-teal-400 mb-7"/><div className="text-4xl font-black text-white mb-2">100%</div><h3 className="text-sm font-bold uppercase tracking-[0.12em] text-teal-400 mb-3">Focal drift lock</h3><p className="text-xs leading-6 text-white/45">Optical word mapping keeps the recognition point fixed even as token geometry changes.</p>
+            <div className="relative mt-6 h-8 border-y border-white/[0.06]"><div className="absolute left-1/2 top-0 bottom-0 w-px bg-teal-400"/><div className="absolute left-[18%] right-[18%] top-1/2 h-px bg-gradient-to-r from-transparent via-teal-400/50 to-transparent"/></div>
+          </article>
+
+          <article className="lg:col-span-5 rounded-3xl border border-white/10 bg-white/[0.025] p-7 min-h-[245px] flex flex-col sm:flex-row gap-7 items-center">
+            <div className="shrink-0 relative w-28 h-32 rounded-xl border border-white/10 bg-black/30 flex items-center justify-center"><FileText size={34} className="text-white/25"/><div className="absolute -right-3 top-5 w-6 h-6 rounded-full bg-amber-500 text-black text-[9px] font-black flex items-center justify-center">01</div><div className="absolute -right-3 top-14 w-6 h-6 rounded-full bg-teal-400 text-black text-[9px] font-black flex items-center justify-center">12</div></div>
+            <div><div className="text-[9px] uppercase tracking-[0.18em] text-pink-400 mb-3">Dynamic ingestion</div><h3 className="text-xl font-bold text-white mb-3">Counts grow while you read.</h3><p className="text-xs leading-6 text-white/45">Page totals, word arrays, and chapter boundaries update without interrupting playback.</p></div>
+          </article>
+
+          <article className="lg:col-span-3 rounded-3xl border border-white/10 bg-black/35 p-7 min-h-[245px]">
+            <Database size={20} className="text-amber-500 mb-8"/><div className="text-4xl font-black text-white mb-2">0</div><h3 className="text-sm font-bold text-white mb-3">Cloud PDF copies</h3><p className="text-[11px] leading-5 text-white/40">Your source document remains local to the browser.</p><div className="mt-5 text-[8px] uppercase tracking-[0.14em] text-amber-500/60">IndexedDB / encrypted origin</div>
+          </article>
         </div>
       </section>
 
 
-      <section className="py-28 px-6 max-w-7xl mx-auto border-t border-white/5">
+      <section className="py-16 md:py-20 px-6 max-w-7xl mx-auto border-t border-white/5">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
           <div>
             <div className="text-[10px] tracking-[0.24em] uppercase text-teal-400/70 font-bold mb-5">Selected reading modes</div>
@@ -894,162 +918,65 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
           </div>
           <p className="text-sm leading-6 text-white/45 max-w-sm">Four practical workflows for turning a static document into a deliberate reading session.</p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {readingWorkflows.map((workflow, index) => {
-            const style = workflowStyles[workflow.color];
-            return (
-              <article key={workflow.number} className={`group relative min-h-[408px] rounded-3xl border border-white/10 bg-[#090909] overflow-hidden ${style.border} transition-all duration-500 hover:-translate-y-1`}>
-                <div className={`absolute inset-x-0 top-0 h-48 bg-gradient-to-b ${style.glow} to-transparent opacity-40`} />
-                <div className="relative h-48 border-b border-white/[0.06] overflow-hidden">
-                  <svg viewBox="0 0 620 210" className="w-full h-full" aria-hidden="true">
-                    <defs><pattern id={`workflow-grid-${index}`} width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="white" strokeOpacity=".07" strokeWidth=".6" /></pattern></defs>
-                    <rect width="620" height="210" fill={`url(#workflow-grid-${index})`} />
-                    <g fill="none" stroke="currentColor" className={style.text}>
-                      <circle cx="310" cy="105" r="56" strokeOpacity=".22" />
-                      <circle cx="310" cy="105" r="30" strokeOpacity=".4" strokeDasharray="4 7" />
-                      <path d="M60 105h190M370 105h190M310 15v60M310 135v60" strokeOpacity=".22" />
-                      <path d={`M110 ${index % 2 ? 150 : 62} C190 40 235 165 310 105 S445 55 520 ${index % 2 ? 60 : 152}`} strokeOpacity=".75" strokeWidth="1.5" />
-                    </g>
-                    <g fill="currentColor" className={style.text}>{[110,210,310,410,520].map((x, point) => <circle key={x} cx={x} cy={point === 2 ? 105 : (point + index) % 2 ? 62 : 150} r={point === 2 ? 4 : 2.5} />)}</g>
-                    <text x="24" y="30" fill="white" fillOpacity=".25" fontSize="9" letterSpacing="2">MODE / {workflow.number}</text>
-                    <text x="535" y="190" fill="white" fillOpacity=".2" fontSize="8" letterSpacing="1.5">ACTIVE</text>
-                  </svg>
-                  <div className="absolute top-5 right-5 flex items-center gap-2 text-[8px] tracking-[0.16em] uppercase text-white/30"><span className={`w-1.5 h-1.5 rounded-full ${workflow.color === 'teal' ? 'bg-teal-400' : workflow.color === 'pink' ? 'bg-pink-400' : 'bg-amber-500'} animate-pulse`} /> Calibrated</div>
-                </div>
-                <div className="relative p-7 md:p-9">
-                  <div className="flex items-center justify-between mb-5"><span className={`text-[9px] tracking-[0.2em] uppercase font-bold ${style.text}`}>{workflow.label}</span><span className="font-mono text-[10px] text-white/20">[{workflow.number}]</span></div>
-                  <h3 className="text-2xl font-bold tracking-tight text-white mb-4">{workflow.title}</h3>
-                  <p className="text-sm leading-6 text-white/45 max-w-xl mb-7">{workflow.description}</p>
-                  <div className="flex flex-wrap gap-2">{workflow.meta.map((item) => <span key={item} className="rounded-full border border-white/10 bg-white/[0.025] px-3 py-2 text-[8px] tracking-[0.12em] uppercase text-white/40">{item}</span>)}</div>
-                </div>
-              </article>
-            );
-          })}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <article className="lg:col-span-7 relative rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-[#080808] p-7 md:p-9 overflow-hidden min-h-[420px]">
+            <div className="flex items-center justify-between mb-8"><span className="text-[9px] uppercase tracking-[0.2em] font-bold text-amber-500">Deep work / 01</span><span className="text-[8px] font-mono text-white/25">45:00 BLOCK</span></div>
+            <div className="grid md:grid-cols-[1fr_150px] gap-8">
+              <div><h3 className="text-2xl md:text-3xl font-black text-white mb-4">The focused chapter sprint</h3><p className="text-sm leading-7 text-white/45">A distraction-resistant session built around one chapter, one focal rail, and a pace calibrated for sustained comprehension.</p>
+                <div className="relative mt-9 h-32 border-y border-white/[0.07] flex items-center justify-center"><div className="absolute inset-y-0 left-1/2 w-px bg-amber-500/60"/><span className="text-4xl font-serif"><i className="not-italic text-white/25">atten</i><b className="text-amber-500">t</b><i className="not-italic text-white/25">ion</i></span><div className="absolute bottom-3 left-4 text-[8px] font-mono text-white/20">ORP LOCKED</div></div>
+              </div>
+              <aside className="rounded-2xl border border-white/10 bg-black/25 p-5"><div className="text-[8px] uppercase tracking-[0.15em] text-white/25 mb-6">Session plan</div><div className="space-y-5"><div><span className="text-2xl font-black text-white">420</span><small className="block text-[8px] uppercase text-amber-500">WPM target</small></div><div><span className="text-2xl font-black text-white">01</span><small className="block text-[8px] uppercase text-white/30">Chapter</small></div><div><span className="text-2xl font-black text-teal-400">88%</span><small className="block text-[8px] uppercase text-white/30">Focus score</small></div></div></aside>
+            </div>
+          </article>
+
+          <article className="lg:col-span-5 rounded-3xl border border-teal-500/20 bg-[#07100f] overflow-hidden min-h-[420px]">
+            <div className="px-7 py-6 border-b border-teal-500/15 flex items-center justify-between"><div><span className="text-[9px] uppercase tracking-[0.2em] text-teal-400">Research / 02</span><h3 className="text-xl font-bold text-white mt-2">High-volume first pass</h3></div><FileText size={20} className="text-teal-400"/></div>
+            <div className="p-7"><p className="text-xs leading-6 text-white/45 mb-7">Build a fast mental map before returning to the passages that deserve close analysis.</p><div className="font-mono text-[10px] divide-y divide-white/[0.06] border-y border-white/[0.06]"><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.01</span><span className="text-white/60">Abstract + premise</span><span className="text-teal-400">READ</span></div><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.04</span><span className="text-white/60">Primary evidence</span><span className="text-amber-500">FLAG</span></div><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.11</span><span className="text-white/60">Counterargument</span><span className="text-white/25">QUEUE</span></div></div><div className="mt-6 flex items-center gap-2 text-[8px] uppercase tracking-[0.14em] text-teal-400"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"/> 12 pages indexed</div></div>
+          </article>
+
+          <article className="lg:col-span-5 rounded-3xl border border-pink-500/20 bg-pink-500/[0.035] p-7 md:p-8 min-h-[310px]">
+            <div className="flex gap-6 items-start"><div className="relative shrink-0 w-20 h-28"><div className="absolute inset-0 translate-x-3 -translate-y-2 rounded-lg border border-pink-500/15"/><div className="absolute inset-0 translate-x-1 -translate-y-1 rounded-lg border border-pink-500/25"/><div className="relative h-full rounded-lg bg-pink-500/10 border border-pink-500/35 flex items-center justify-center"><BookOpen size={26} className="text-pink-400"/></div></div><div><span className="text-[9px] uppercase tracking-[0.2em] text-pink-400">Learning / 03</span><h3 className="text-xl font-bold text-white mt-3 mb-3">A repeatable study rhythm</h3><p className="text-xs leading-6 text-white/45">Turn a dense reading list into daily sessions with visible chapter progress and consistent timing.</p></div></div>
+            <div className="mt-8 grid grid-cols-[auto_1fr_auto] gap-4 items-center"><span className="text-[9px] font-mono text-white/25">DAY 06</span><div className="h-2 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full w-[64%] bg-gradient-to-r from-pink-500 to-amber-500 rounded-full"/></div><span className="text-[9px] font-mono text-pink-400">64%</span></div>
+          </article>
+
+          <article className="lg:col-span-7 relative rounded-3xl border border-white/10 bg-white/[0.025] p-7 md:p-8 min-h-[310px] overflow-hidden">
+            <div className="grid sm:grid-cols-[1fr_220px] gap-7 items-center"><div><span className="text-[9px] uppercase tracking-[0.2em] text-amber-500">Review / 04</span><h3 className="text-2xl font-bold text-white mt-3 mb-4">The last-mile knowledge scan</h3><p className="text-xs leading-6 text-white/45 max-w-md">Revisit familiar material at elevated speed while the focal rail keeps attention on meaning instead of line finding.</p><div className="mt-6 flex gap-5 text-[8px] uppercase tracking-[0.14em] text-white/30"><span>Instant replay</span><span>•</span><span>Focal lock</span></div></div><div className="relative h-44"><svg viewBox="0 0 220 170" className="w-full h-full"><path d="M25 138A88 88 0 01195 138" pathLength="1" fill="none" stroke="white" strokeOpacity=".08" strokeWidth="14" strokeLinecap="round"/><path className="metric-ring" d="M25 138A88 88 0 01170 72" pathLength="1" fill="none" stroke="#f59e0b" strokeOpacity=".8" strokeWidth="14" strokeLinecap="round" strokeDasharray="1" style={{'--ring-end':'0'}}/><path className="chart-line" pathLength="1" d="M110 138l53-60" stroke="#2dd4bf" strokeWidth="2"/><circle cx="110" cy="138" r="7" fill="#2dd4bf"/></svg><div className="absolute inset-0 flex items-center justify-center pt-14"><div className="text-center"><b className="block text-3xl text-white">780</b><span className="text-[8px] uppercase tracking-[0.14em] text-white/25">WPM review</span></div></div></div></div>
+          </article>
         </div>
       </section>
 
 
       {/* --- PRICING SECTION --- */}
-      <section id="pricing" className="py-32 px-6 max-w-7xl mx-auto">
+      <section id="pricing" className="py-16 md:py-20 px-6 max-w-7xl mx-auto">
         <SectionHeader title="Pricing" subtitle="Pick your reading tier" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-          {pricingPlans.map((plan, i) => (
-            <div key={i} className={`relative group p-8 md:p-10 bg-gradient-to-b from-zinc-900 to-[#090909] border border-white/10 ${planStyles[plan.color].border} transition-all duration-500 rounded-3xl overflow-hidden`}>
-              <div className={`absolute -top-24 -right-20 w-52 h-52 rounded-full blur-3xl ${plan.color === 'teal' ? 'bg-teal-500/10' : 'bg-amber-500/10'}`} />
-              {plan.badge && <div className="absolute top-6 right-6 rounded-full border border-teal-500/25 bg-teal-500/10 px-3 py-1 text-[8px] tracking-[0.18em] uppercase font-bold text-teal-400">{plan.badge}</div>}
-              <div className={`text-[9px] tracking-[0.2em] uppercase mb-4 ${planStyles[plan.color].text}`}>{plan.eyebrow}</div>
-              <h3 className="text-2xl font-bold tracking-[0.16em] uppercase mb-4 text-white">{plan.name}</h3>
-              <p className="text-sm leading-6 text-white/50 min-h-18 mb-7 max-w-md">{plan.description}</p>
-              <div className="flex items-baseline gap-2 mb-8 pb-8 border-b border-white/10">
-                <span className="text-4xl font-mono">${plan.price}</span>
-                <span className="text-white/30 text-[10px] uppercase tracking-[0.14em]">{plan.price === "0" ? "forever" : "one payment · lifetime"}</span>
-              </div>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 mb-10">
-                {plan.features.map((f, j) => (
-                  <li key={j} className="text-[10px] text-white/55 uppercase tracking-[0.1em] flex items-start gap-2 leading-5">
-                    <Check size={12} className={`${planStyles[plan.color].icon} mt-1 shrink-0`} /> {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="flex items-center justify-between gap-4">
-                <ReadimentaryButton color={plan.color} onClick={() => {
-                  if (!user) setShowLogin(true);
-                  else if (plan.price === '0') onEnter();
-                  else if (!user.isPaid) onCheckout();
-                }}>{plan.price === '0' ? 'Start Free' : user?.isPaid ? 'Paid Access Active' : 'Upgrade Securely'}</ReadimentaryButton>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="max-w-5xl mx-auto mt-7 rounded-2xl border border-white/10 bg-white/[0.025] overflow-hidden">
-          <div className="grid grid-cols-[1.5fr_1fr_1fr] px-5 md:px-7 py-4 bg-white/[0.035] text-[9px] tracking-[0.18em] uppercase text-white/35">
-            <span>Entitlement</span><span>Free</span><span className="text-teal-400/70">Lifetime</span>
-          </div>
-          {pricingComparison.map((row) => (
-            <div key={row.label} className="grid grid-cols-[1.5fr_1fr_1fr] px-5 md:px-7 py-4 border-t border-white/10 text-xs">
-              <span className="text-white/65">{row.label}</span><span className="text-white/40">{row.free}</span><span className="text-white/80">{row.paid}</span>
-            </div>
-          ))}
-        </div>
-        <div className="max-w-5xl mx-auto mt-5 flex flex-col sm:flex-row items-center justify-center gap-3 text-center text-[9px] tracking-[0.14em] uppercase text-white/30">
-          <span className="flex items-center gap-2"><Lock size={11} className="text-amber-500/70" /> Secure Stripe checkout</span>
-          <span className="hidden sm:block text-white/15">•</span>
-          <span>No subscription or renewal</span>
-          <span className="hidden sm:block text-white/15">•</span>
-          <span>Local-first PDF storage</span>
-        </div>
-      </section>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-6xl mx-auto items-stretch">
+          <article className="lg:col-span-4 relative rounded-3xl border border-amber-500/35 bg-gradient-to-b from-amber-500/[0.14] via-amber-500/[0.045] to-[#090909] p-7 md:p-8 flex flex-col overflow-hidden shadow-[0_0_60px_rgba(245,158,11,0.06)]">
+            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-amber-500/15"/><div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border border-amber-500/20"/>
+            <div className="relative flex items-center justify-between mb-8"><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"/><span className="text-[9px] font-mono text-amber-500">01 / FREE FOREVER</span></div><div className="w-10 h-10 rounded-xl border border-amber-500/30 bg-amber-500/15 flex items-center justify-center"><BookOpen size={17} className="text-amber-400"/></div></div>
+            <div className="relative mb-7"><div className="flex items-end gap-2"><span className="text-6xl font-black tracking-[-0.06em] text-white">$0</span><span className="text-[9px] uppercase tracking-[0.16em] text-amber-500/70 mb-3">no expiry</span></div><h3 className="text-2xl font-bold text-white mt-4 mb-3">Your first complete reading room.</h3><p className="text-xs leading-6 text-white/55">Upload one full PDF and use the same speed, optical, chapter, and progress systems as Lifetime.</p></div>
+            <div className="relative rounded-2xl border border-amber-500/15 bg-black/25 p-5 mb-6"><div className="flex items-center justify-between mb-5"><span className="text-[8px] uppercase tracking-[0.16em] text-white/35">Document allocation</span><span className="text-[9px] font-mono text-amber-500">1 / 1</span></div><div className="h-2 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full w-full rounded-full bg-gradient-to-r from-amber-600 to-amber-300"/></div><div className="mt-3 text-[9px] text-white/35">One slot. Unlimited pages. Unlimited sessions.</div></div>
+            <div className="relative grid grid-cols-2 gap-2 mb-7 flex-1"><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4"><ScanLine size={14} className="text-amber-500 mb-3"/><b className="block text-[10px] text-white">ORP engine</b></div><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4"><Gauge size={14} className="text-teal-400 mb-3"/><b className="block text-[8px] text-white">300–900 WPM</b></div><div className="col-span-2 flex items-center gap-3 px-4 py-3 border-l-2 border-pink-500/40 bg-pink-500/[0.035]"><Layers3 size={14} className="text-pink-400"/><span className="text-[10px] text-white/55">Chapter detection + persistent progress</span></div></div>
+            <div className="relative"><ReadimentaryButton color="amber" onClick={() => user ? onEnter() : setShowLogin(true)}>Start Free <ArrowRight size={14}/></ReadimentaryButton></div>
+          </article>
 
-      <section className="py-28 px-6 max-w-7xl mx-auto border-t border-white/5">
-        <SectionHeader title="Reader Stories" subtitle="How people are using Readimentary" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {testimonials.map((item) => (
-            <div key={item.name} className="bg-white/[0.03] border border-white/10 p-7 rounded-2xl">
-              <p className="text-sm text-white/75 leading-relaxed mb-6">"{item.quote}"</p>
-              <div className="text-[10px] tracking-[0.16em] uppercase text-amber-500/80">{item.name}</div>
-              <div className="text-[10px] tracking-[0.14em] uppercase text-white/40 mt-2">{item.role}</div>
+          <article className="lg:col-span-8 relative rounded-3xl border border-teal-500/30 bg-gradient-to-br from-teal-500/[0.10] via-[#0a0a0a] to-amber-500/[0.05] p-7 md:p-10 overflow-hidden">
+            <div className="absolute inset-0 opacity-15" style={{backgroundImage:'radial-gradient(circle at center, #2dd4bf 1px, transparent 1px)',backgroundSize:'26px 26px'}}/>
+            <div className="relative"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-9"><div className="flex items-center gap-3"><span className="text-[9px] font-mono text-teal-400">02 / LIFETIME</span><span className="rounded-full border border-teal-500/25 bg-teal-500/10 px-3 py-1 text-[8px] uppercase tracking-[0.16em] text-teal-400">Recommended</span></div><div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.15em] text-white/30"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"/> Single payment</div></div>
+              <div className="grid md:grid-cols-[1fr_1.05fr] gap-10 items-start"><div><div className="flex items-end gap-3"><span className="text-6xl md:text-7xl font-black tracking-[-0.06em] text-white">$10</span><span className="text-[9px] uppercase tracking-[0.16em] text-white/30 mb-3">once</span></div><h3 className="text-2xl font-bold text-white mt-6 mb-4">Build the library you actually want to finish.</h3><p className="text-sm leading-7 text-white/50">Unlimited document slots, continuous ingestion, and every reader capability—owned for life without a subscription.</p></div>
+                <div className="grid sm:grid-cols-2 gap-3"><div className="rounded-2xl border border-white/10 bg-black/25 p-5"><Database size={17} className="text-teal-400 mb-5"/><b className="block text-xs text-white mb-2">Unlimited library</b><span className="text-[10px] leading-5 text-white/35">Add every PDF in your reading queue.</span></div><div className="rounded-2xl border border-white/10 bg-black/25 p-5"><Activity size={17} className="text-amber-500 mb-5"/><b className="block text-xs text-white mb-2">Live analytics</b><span className="text-[10px] leading-5 text-white/35">Track pace, sessions, and completion.</span></div><div className="sm:col-span-2 rounded-2xl border border-white/10 bg-white/[0.025] p-5 flex gap-4 items-center"><Shield size={18} className="text-pink-400 shrink-0"/><div><b className="block text-xs text-white mb-1">Future core reader upgrades included</b><span className="text-[10px] text-white/35">No renewal, usage meter, or recurring fee.</span></div></div></div></div>
+              <div className="mt-9 pt-7 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-5"><ReadimentaryButton color="teal" onClick={() => user ? onEnter() : setShowLogin(true)}>Open Reader</ReadimentaryButton><span className="text-[9px] uppercase tracking-[0.14em] text-white/30 flex items-center gap-2"><Lock size={11}/> Payments temporarily disabled</span></div>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* --- FAQ SECTION --- */}
-      <section id="faq" className="py-32 px-6 max-w-3xl mx-auto border-t border-white/5">
-        <SectionHeader title="FAQ" subtitle="Everything you should know before you start" />
-        <div className="space-y-4">
-          {faqs.map((faq, i) => (
-            <div key={i} className="border border-white/5 bg-white/[0.02]">
-              <button 
-                onClick={() => setActiveFaq(activeFaq === i ? null : i)}
-                className="w-full flex items-center justify-between p-6 text-left hover:bg-white/5 transition-colors"
-              >
-                <span className="text-xs font-bold tracking-[0.2em] uppercase">{faq.q}</span>
-                <ChevronDown className={`transition-transform duration-300 ${activeFaq === i ? 'rotate-180' : ''}`} size={16} />
-              </button>
-              <div className={`transition-all duration-300 overflow-hidden ${activeFaq === i ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
-                <p className="p-6 pt-0 text-xs text-white/40 leading-relaxed uppercase tracking-wider">{faq.a}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="docs" className="py-24 px-6 max-w-4xl mx-auto border-t border-white/5">
-        <SectionHeader title="Docs" subtitle="Quick usage notes" />
-        <div className="bg-white/[0.03] border border-white/10 p-8">
-          <p className="text-sm text-white/70 leading-relaxed">
-            Upload a PDF, select a chapter, and start RSVP playback. Use the WPM control to tune speed and the focus highlight settings to match your reading rhythm.
-          </p>
-        </div>
-      </section>
-
-      <section className="py-24 px-6 max-w-6xl mx-auto border-t border-white/5">
-        <div className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-transparent to-teal-500/10 p-10 md:p-14">
-          <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-          <div className="relative text-center">
-            <p className="text-[10px] tracking-[0.25em] uppercase font-black text-amber-500/80 mb-4">Reading Acceleration Layer</p>
-            <h3 className="text-2xl md:text-4xl font-black tracking-[0.12em] uppercase text-white mb-5">Build A Faster Reading Routine</h3>
-            <p className="text-sm md:text-base text-white/70 max-w-2xl mx-auto leading-relaxed mb-8">
-              Stop drifting across lines. Keep your eyes fixed, tune your speed, and finish more chapters with less cognitive drag.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-              <ReadimentaryButton onClick={() => setShowLogin(true)} color="amber">
-                <BookOpen size={18} /> Start Reading <ArrowRight size={18} />
-              </ReadimentaryButton>
-              <ReadimentaryButton onClick={() => {
-                const container = document.getElementById('landing-scroll-container');
-                if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
-              }} color="teal">
-                <RotateCcw size={18} /> Back To Top
-              </ReadimentaryButton>
-            </div>
-          </div>
+          </article>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-20 text-center border-t border-white/5 bg-black">
-        <p className="text-[9px] text-white/20 tracking-[0.4em] uppercase">Readimentary // RSVP reading for speed and focus</p>
+      <footer className="border-t border-white/[0.06] bg-black px-6 py-10">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="flex items-center gap-3"><div className="w-6 h-6 border border-amber-500/40 flex items-center justify-center"><div className="w-2 h-2 bg-amber-500" /></div><span className="text-[10px] font-bold tracking-[0.32em] uppercase text-white/55">Readimentary</span></div>
+          <p className="text-[9px] text-white/25 tracking-[0.16em] uppercase text-center">© 2026 Readimentary. All rights reserved.</p>
+          <p className="text-[8px] text-white/20 tracking-[0.16em] uppercase">RSVP reading engine</p>
+        </div>
       </footer>
 
       {/* Login Modal */}
@@ -1066,9 +993,9 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             </button>
 
             <div className="mb-8">
-              <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">{authMode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
+              <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">Enter Reader</h2>
               <p className="text-[10px] text-white/40 tracking-[0.15em] uppercase mt-3">
-                {authMode === 'login' ? 'Sign in to continue to your reading workspace' : 'Your first PDF is included free'}
+                Local preview access · your PDFs remain in this browser
               </p>
             </div>
 
@@ -1083,7 +1010,6 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                     id="email"
                     type="email"
                     autoComplete="email"
-                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
@@ -1102,7 +1028,6 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                     id="password"
                     type="password"
                     autoComplete="current-password"
-                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
@@ -1121,9 +1046,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                   />
                   Remember me
                 </label>
-                <button type="button" className="text-amber-500/80 hover:text-amber-500 transition-colors font-bold">
-                  Forgot password?
-                </button>
+                <span className="text-white/25">Local preview mode</span>
               </div>
 
               <div className="relative inline-block group w-full pt-2">
@@ -1132,7 +1055,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                   disabled={authBusy}
                   className="relative z-10 w-full flex items-center justify-center gap-3 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-6 py-4 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase"
                 >
-                  {authBusy ? 'Authenticating…' : authMode === 'login' ? 'Sign In' : 'Create Account'} <ArrowRight size={14} />
+                  {authBusy ? 'Opening…' : 'Continue to Reader'} <ArrowRight size={14} />
                 </button>
                 <div className="absolute inset-0 border border-amber-500/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
               </div>
@@ -1140,29 +1063,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
 
             {authError && <p role="alert" className="mt-4 text-xs text-red-400 leading-relaxed">{authError}</p>}
 
-            <button type="button" onClick={() => setAuthMode((mode) => mode === 'login' ? 'register' : 'login')} className="mt-5 w-full text-[10px] text-amber-500/80 hover:text-amber-400 tracking-[0.15em] uppercase">
-              {authMode === 'login' ? 'New here? Create an account' : 'Already registered? Sign in'}
-            </button>
-
-            <div className="my-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-white/10" />
-              <span className="text-[9px] text-white/40 tracking-[0.2em] uppercase">or continue with</span>
-              <div className="h-px flex-1 bg-white/10" />
-            </div>
-
-            <div className="space-y-3">
-              <SocialLoginButton icon={<GoogleIcon />} onClick={() => onOAuth('google')}>Continue with Google</SocialLoginButton>
-              <SocialLoginButton icon={<AppleIcon />} onClick={() => onOAuth('apple')}>Continue with Apple</SocialLoginButton>
-            </div>
-
-            <p className="mt-6 text-[9px] text-white/35 tracking-[0.12em] uppercase leading-relaxed">
-              By continuing, you agree to the terms of service and privacy policy.
-            </p>
-            <div className="mt-4 text-center">
-              <button type="button" className="text-[10px] text-white/45 hover:text-white/70 tracking-[0.15em] uppercase transition-colors">
-                Need help?
-              </button>
-            </div>
+            <p className="mt-6 text-[9px] text-white/30 tracking-[0.12em] uppercase leading-relaxed">Email and password are optional during local preview mode.</p>
           </div>
         </div>
       )}

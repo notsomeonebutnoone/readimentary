@@ -8,7 +8,8 @@ export const createDefaultAnalytics = () => ({
   totalReadingMs: 0,
   totalWordsAdvanced: 0,
   totalSessions: 0,
-  dailyMs: {}
+  dailyMs: {},
+  dailyWords: {}
 });
 
 export const getUserId = () => {

@@ -7,9 +7,9 @@ import ReaderScreen from './screens/ReaderScreen';
 import SettingsModal from './components/app/SettingsModal';
 import { ensurePdfJsLoaded } from './lib/pdfEngine';
 import { parsePdfProgressively } from './lib/progressivePdfParser';
-import { api } from './lib/apiClient';
 import { savePdfBlob, loadPdfBlob, deletePdfBlob } from './lib/pdfBlobStore';
 import {
+  getUserId,
   loadSettings,
   saveSettings,
   loadLibrary,
@@ -34,7 +34,7 @@ export default function App() {
   const [readingStats, setReadingStats] = useState(createDefaultAnalytics());
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState('');
-  const [authStatus, setAuthStatus] = useState('loading');
+  const [authStatus, setAuthStatus] = useState('unauthenticated');
   const [loginRequestKey, setLoginRequestKey] = useState(0);
 
   const [wpm, setWpm] = useState(350);
@@ -47,7 +47,6 @@ export default function App() {
   const userIdRef = useRef(null);
   const statsBufferRef = useRef({ ms: 0, words: 0 });
   const prevReaderPlayingRef = useRef(false);
-  const authResultRef = useRef(new URLSearchParams(window.location.search).get('auth'));
 
   const fonts = [
     { name: 'Classic Serif', value: 'ui-serif, Georgia, serif' },
@@ -71,6 +70,10 @@ export default function App() {
       dailyMs: {
         ...(prev.dailyMs || {}),
         [dayKey]: (prev.dailyMs?.[dayKey] || 0) + ms
+      },
+      dailyWords: {
+        ...(prev.dailyWords || {}),
+        [dayKey]: (prev.dailyWords?.[dayKey] || 0) + advancedWords
       }
     }));
     statsBufferRef.current = { ms: 0, words: 0 };
@@ -94,20 +97,6 @@ export default function App() {
     setFontSize(s.fontSize);
     setFontFamily(s.fontFamily);
     setShowORP(s.showORP);
-    api.me().then(({ user: sessionUser }) => {
-      setUser(sessionUser);
-      userIdRef.current = sessionUser.id;
-      setLibrary(loadLibrary(sessionUser.id));
-      setReadingStats(loadAnalytics(sessionUser.id));
-      setAuthStatus('authenticated');
-      if (authResultRef.current === 'success') {
-        window.history.replaceState({}, '', window.location.pathname);
-        setScreen('library');
-      }
-    }).catch(() => {
-      setAuthStatus('unauthenticated');
-      if (authResultRef.current === 'error') setAuthError('Google sign-in could not be completed. Please try again.');
-    });
   }, []);
 
   useEffect(() => {
@@ -269,16 +258,6 @@ export default function App() {
       const pdfUrl = URL.createObjectURL(blob);
       const bookId = crypto.randomUUID?.() || Date.now().toString();
       const title = file.name.replace(/\.pdf$/i, '');
-      try {
-        await api.registerBook({ id: bookId, title });
-      } catch (error) {
-        if (error.code === 'PAYMENT_REQUIRED') {
-          const { url } = await api.checkout();
-          window.location.assign(url);
-          return;
-        }
-        throw error;
-      }
       await savePdfBlob(bookId, blob).catch(() => {});
       let opened = false;
       const applySnapshot = (snapshot, final = false) => {
@@ -300,11 +279,9 @@ export default function App() {
         onReady: (snapshot) => applySnapshot(snapshot),
         onProgress: (snapshot) => {
           if (opened) applySnapshot(snapshot);
-          api.updateBook(bookId, { status: snapshot.status, totalWords: snapshot.words.length, parsedPages: snapshot.parsedPages, totalPages: snapshot.totalPages }).catch(() => {});
         }
       });
       applySnapshot(result, true);
-      await api.updateBook(bookId, { status: 'ready', totalWords: result.words.length, parsedPages: result.parsedPages, totalPages: result.totalPages }).catch(() => {});
     } catch (err) {
       console.error('PDF error:', err);
       setAuthError(err.message || 'The PDF could not be imported.');
@@ -334,7 +311,6 @@ export default function App() {
     e.stopPropagation();
     setLibrary((prev) => prev.filter((b) => b.id !== bookId));
     deletePdfBlob(bookId).catch(() => {});
-    api.deleteBook(bookId).catch(() => {});
     if (currentBook?.id === bookId) {
       setCurrentBook(null);
       navigateTo('library');
@@ -394,8 +370,11 @@ export default function App() {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const key = d.toISOString().slice(0, 10);
-      const minutes = Math.round((readingStats.dailyMs?.[key] || 0) / 60000);
-      heatmapDays.push({ key, minutes });
+      const milliseconds = readingStats.dailyMs?.[key] || 0;
+      const minutes = Math.round(milliseconds / 60000);
+      const dailyWords = readingStats.dailyWords?.[key] || 0;
+      const averageWpm = milliseconds > 0 ? dailyWords / (milliseconds / 60000) : 0;
+      heatmapDays.push({ key, minutes, averageWpm });
     }
 
     return { booksRead, completedBooks, totalHours, averageWpm, totalSessions: readingStats.totalSessions, heatmapDays };
@@ -414,41 +393,30 @@ export default function App() {
     }, 400);
   };
 
-  const handleEmailAuth = async ({ email, password, mode }) => {
+  const handleEmailAuth = async ({ email }) => {
     setAuthError('');
-    try {
-      const result = mode === 'register' ? await api.register(email, password) : await api.login(email, password);
-      setUser(result.user);
-      setAuthStatus('authenticated');
-      userIdRef.current = result.user.id;
-      setLibrary(loadLibrary(result.user.id));
-      setReadingStats(loadAnalytics(result.user.id));
-      handleEnterLibrary();
-    } catch (error) {
-      setAuthError(error.message);
-      throw error;
-    }
+    const localId = getUserId();
+    const localUser = { id: localId, email: email || 'local-preview@readimentary.app', isLocal: true, isPaid: false, tier: 'preview' };
+    setUser(localUser);
+    setAuthStatus('authenticated');
+    userIdRef.current = localId;
+    setLibrary(loadLibrary(localId));
+    setReadingStats(loadAnalytics(localId));
+    setIsTransitioning(true);
+    setTimeout(() => {
+      navigateTo('library');
+      setIsTransitioning(false);
+    }, 300);
   };
 
-  const handleOAuth = async (provider) => {
-    setAuthError('');
-    try {
-      const { providers } = await api.providers();
-      if (!providers?.[provider]) throw new Error(`${provider === 'google' ? 'Google' : 'Apple'} sign-in is not configured yet.`);
-      window.location.assign(api.oauthUrl(provider));
-    } catch (error) {
-      setAuthError(error.message);
-      setLoginRequestKey((key) => key + 1);
-    }
-  };
-
-  const handleCheckout = async () => {
-    try {
-      const { url } = await api.checkout();
-      window.location.assign(url);
-    } catch (error) {
-      setAuthError(error.message);
-    }
+  const seekToPdfWord = (wordIndex) => {
+    const safeIndex = Math.max(0, Math.min(words.length - 1, Number(wordIndex) || 0));
+    const matchingChapter = currentBook?.chapters?.find((chapter) => (
+      safeIndex >= chapter.startIndex && safeIndex < chapter.startIndex + chapter.wordCount
+    ));
+    if (matchingChapter) setCurrentChapter(matchingChapter);
+    setIsPlaying(false);
+    setCurrentIndexWithTracking(safeIndex);
   };
 
   const handleGoHome = () => {
@@ -467,7 +435,7 @@ export default function App() {
           className={`fixed inset-0 z-[100] overflow-y-auto transition-opacity duration-400 ${isTransitioning ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           style={{ pointerEvents: isTransitioning ? 'none' : 'auto' }}
         >
-          <Landing onEnter={handleEnterLibrary} onEmailAuth={handleEmailAuth} onOAuth={handleOAuth} onCheckout={handleCheckout} user={user} authError={authError} loginRequestKey={loginRequestKey} />
+          <Landing onEnter={handleEnterLibrary} onEmailAuth={handleEmailAuth} user={user} authError={authError} loginRequestKey={loginRequestKey} />
         </div>
       )}
 
@@ -506,6 +474,7 @@ export default function App() {
           setIsPlaying={setIsPlaying}
           setShowSettings={setShowSettings}
           setCurrentIndexWithTracking={setCurrentIndexWithTracking}
+          onSeekWord={seekToPdfWord}
           navigateTo={navigateTo}
           renderWord={renderWord}
         />
