@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 import { createCheckoutHandler } from './billing/checkout.mjs';
+import { createPortalHandler } from './billing/portal.mjs';
 import { createStatusHandler } from './billing/status.mjs';
 import { createStripeWebhookHandler, processStripeEvent } from './webhooks/stripe.mjs';
 
@@ -41,9 +42,14 @@ describe('billing checkout', () => {
     expect(out.json.error.code).toBe('INVALID_PLAN');
   });
 
-  it('rejects arbitrary browser supplied price IDs', async () => {
+  it.each([
+    ['priceId', 'price_attacker'],
+    ['amount', 1],
+    ['customerId', 'cus_attacker'],
+    ['email', 'attacker@example.com']
+  ])('rejects browser supplied %s', async (field, value) => {
     const out = res();
-    await createCheckoutHandler({ requireAuth: authed(), sql: fakeSql(), stripe: {}, env: { STRIPE_PRICE_INDIVIDUAL_MONTHLY: 'price_server' } })(req({ method: 'POST', body: { plan: 'individual', billingInterval: 'monthly', priceId: 'price_attacker' } }), out);
+    await createCheckoutHandler({ requireAuth: authed(), sql: fakeSql(), stripe: {}, env: { STRIPE_PRICE_INDIVIDUAL_MONTHLY: 'price_server' } })(req({ method: 'POST', body: { plan: 'individual', billingInterval: 'monthly', [field]: value } }), out);
     expect(out.statusCode).toBe(400);
     expect(out.json.error.code).toBe('UNTRUSTED_BILLING_INPUT');
   });
@@ -53,8 +59,23 @@ describe('billing checkout', () => {
     const out = res();
     await createCheckoutHandler({ requireAuth: authed('user_7'), sql: fakeSql(), stripe: { checkout: { sessions: { create } } }, env: { APP_URL: 'https://app.test', STRIPE_PRICE_PRO_ANNUAL: 'price_server' } })(req({ method: 'POST', body: { plan: 'pro', billingInterval: 'annual' } }), out);
     expect(out.statusCode).toBe(200);
-    expect(create.mock.calls[0][0].line_items[0].price).toBe('price_server');
-    expect(create.mock.calls[0][0].client_reference_id).toBe('user_7');
+    expect(create.mock.calls[0][0]).toMatchObject({
+      mode: 'subscription',
+      client_reference_id: 'user_7',
+      line_items: [{ price: 'price_server', quantity: 1 }],
+      metadata: { clerk_user_id: 'user_7', plan: 'pro', billing_interval: 'annual' },
+      subscription_data: { metadata: { clerk_user_id: 'user_7', plan: 'pro', billing_interval: 'annual' } }
+    });
+  });
+});
+
+describe('billing portal', () => {
+  it('derives the customer from the authenticated user record', async () => {
+    const create = vi.fn(async () => ({ url: 'https://billing.test' }));
+    const out = res();
+    await createPortalHandler({ requireAuth: authed('user_9'), sql: fakeSql({ customer: 'cus_server' }), stripe: { billingPortal: { sessions: { create } } }, env: { APP_URL: 'https://app.test' } })(req({ method: 'POST', body: { customerId: 'cus_attacker' } }), out);
+    expect(out.statusCode).toBe(200);
+    expect(create).toHaveBeenCalledWith({ customer: 'cus_server', return_url: 'https://app.test/?billing=portal' });
   });
 });
 
