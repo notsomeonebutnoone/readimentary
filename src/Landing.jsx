@@ -780,7 +780,7 @@ export default function Landing({ onEnter = () => {}, onOpenAuth = null, onPlanS
             {billingStatus?.active && onManageBilling && <button type="button" onClick={onManageBilling} disabled={billingLoading} className="rounded-xl border border-white/15 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white hover:bg-white/[0.05] disabled:opacity-50">Manage billing</button>}
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-6xl mx-auto items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto items-stretch">
           {PRICING_PLANS.map((plan) => (
             <article key={plan.name} className={`relative rounded-3xl border p-6 md:p-7 flex flex-col bg-white/[0.025] ${plan.recommended ? 'border-teal-500/45 shadow-[0_0_60px_rgba(45,212,191,0.07)]' : 'border-white/10'}`}>
               <div className="flex items-center justify-between mb-5">
