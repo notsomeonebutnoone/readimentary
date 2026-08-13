@@ -34,10 +34,6 @@ export const detectChaptersFromText = (text) => {
     wordCursor += line.split(/\s+/).length;
   });
 
-  if (chapters.length === 0) {
-    chapters.push({ id: 'ch-0', title: 'Start of Document', startIndex: 0 });
-  }
-
   const totalWords = text.split(/\s+/).length;
   chapters.forEach((ch, i) => {
     const nextStart = chapters[i + 1]?.startIndex ?? totalWords;
