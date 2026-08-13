@@ -132,23 +132,23 @@ const NavLink = ({ children, targetId, delay, onNavigate }) => {
 
 
 
-const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, color = "amber" }) => {
+const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, color = "amber", fullWidth = false }) => {
   const colorStyles = {
     amber: "bg-amber-500/10 border-amber-500/30 text-amber-500",
     teal: "bg-teal-500/10 border-teal-500/30 text-teal-500",
     pink: "bg-pink-500/10 border-pink-500/30 text-pink-500"
   };
   return (
-    <div className="relative inline-block group">
+    <div className={`relative group ${fullWidth ? 'block w-full' : 'inline-block'}`}>
       <button
         onClick={onClick}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
-        className={`relative z-10 flex items-center gap-4 backdrop-blur-xl border ${colorStyles[color]} px-10 py-5 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase`}
+        className={`relative z-10 flex items-center gap-4 backdrop-blur-xl border ${colorStyles[color]} px-10 py-5 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase ${fullWidth ? 'w-full justify-center' : ''}`}
       >
         {children}
       </button>
-      <div className={`absolute inset-0 border ${colorStyles[color].split(' ')[1].replace('/30', '/10')} translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2`} />
+      <div className={`absolute inset-0 pointer-events-none border ${colorStyles[color].split(' ')[1].replace('/30', '/10')} translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2`} />
     </div>
   );
 };
@@ -167,6 +167,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
+  const [socialNotice, setSocialNotice] = useState('');
   const [featuresHighlighted, setFeaturesHighlighted] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState('hero');
   const [loopCharacterIndex, setLoopCharacterIndex] = useState(0);
@@ -441,13 +442,6 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     [sampleText]
   );
 
-  const comparisonGraphData = [
-    { label: 'Focus Retention', traditional: 42, rsvp: 82 },
-    { label: 'Eye Movement Load', traditional: 88, rsvp: 28 },
-    { label: 'Speed Potential', traditional: 35, rsvp: 78 },
-    { label: 'Mobile Suitability', traditional: 48, rsvp: 86 }
-  ];
-
   useEffect(() => {
     if (!samplePlaying || sampleIndex >= sampleWords.length) return;
     const interval = setInterval(() => {
@@ -509,6 +503,10 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     }
   };
 
+  const handleSocialLogin = (provider) => {
+    setSocialNotice(`${provider} authentication will be enabled when production accounts are connected.`);
+  };
+
   const highlightFeatures = () => {
     setFeaturesHighlighted(true);
     setTimeout(() => setFeaturesHighlighted(false), 1800);
@@ -522,7 +520,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
 
 
   return (
-    <div ref={containerRef} className="relative min-h-screen bg-[#050505] overflow-x-hidden font-sans text-white scroll-smooth">
+    <div ref={containerRef} className="relative min-h-screen bg-[#050505] overflow-x-hidden font-sans text-white scroll-smooth flex flex-col">
       <style>{animations}</style>
       <div
         className="absolute inset-0 z-0 opacity-[0.14] pointer-events-none"
@@ -556,6 +554,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             <div className="hidden md:flex items-center justify-center gap-10 flex-[2]">
               <NavLink targetId="features" delay="0.4s" onNavigate={highlightFeatures}>Features</NavLink>
               <NavLink targetId="pricing" delay="0.5s">Pricing</NavLink>
+              <NavLink targetId="about" delay="0.6s">About</NavLink>
             </div>
 
             {/* Right Side */}
@@ -565,7 +564,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                   onClick={() => setShowLogin(true)}
                   className="relative z-10 flex items-center gap-2 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-5 py-2 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-[9px] uppercase"
                 >
-                  START <ArrowRight size={12} />
+                  GET STARTED <ArrowRight size={12} />
                 </button>
                 <div className="absolute inset-0 border border-amber-500/10 translate-x-1 translate-y-1 z-0 transition-transform duration-300 group-hover:translate-x-1.5 group-hover:translate-y-1.5" />
               </div>
@@ -589,7 +588,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             Read at the speed of thought.
           </h1>
           <p className="max-w-3xl text-white/55 text-sm md:text-base tracking-wide leading-relaxed">
-            Eliminate subvocalization and eye fatigue. Upload any PDF, map chapters automatically, and push your reading rhythm with a focused RSVP interface designed for deep throughput.
+            Upload a PDF, choose a pace, and read one word at a time. Chapters and progress are saved automatically.
           </p>
         </div>
 
@@ -688,9 +687,35 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
       </div>
 
-      <section className="relative py-16 md:py-20 px-6 max-w-7xl mx-auto overflow-hidden">
+      {/* --- PRICING SECTION --- */}
+      <section id="pricing" className="order-[30] w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
+        <SectionHeader title="Pricing" subtitle="Simple monthly plans · cancel anytime" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-7xl mx-auto items-stretch">
+          {[
+            { name: 'Individual', price: 15, color: 'amber', description: 'For regular reading.', features: ['Unlimited PDFs', 'RSVP reader', 'Chapter progress'] },
+            { name: 'Pro', price: 29, color: 'teal', recommended: true, description: 'For daily power users.', features: ['Everything in Individual', 'Reading analytics', 'Priority support'] },
+            { name: 'Team', price: 79, color: 'pink', description: 'For up to 5 readers.', features: ['Everything in Pro', '5 user seats', 'Shared billing'] }
+          ].map((plan) => (
+            <article key={plan.name} className={`relative rounded-3xl border p-6 md:p-7 flex flex-col bg-white/[0.025] ${plan.recommended ? 'border-teal-500/45 shadow-[0_0_60px_rgba(45,212,191,0.07)]' : 'border-white/10'}`}>
+              <div className="flex items-center justify-between mb-5">
+                <span className="text-[9px] font-mono tracking-[0.18em] text-white/45">{plan.name.toUpperCase()}</span>
+                {plan.recommended && <span className="rounded-full border border-teal-500/25 bg-teal-500/10 px-3 py-1 text-[8px] uppercase tracking-[0.16em] text-teal-400">Recommended</span>}
+              </div>
+              <div className="flex items-end gap-2"><span className="text-6xl font-black tracking-[-0.06em] text-white">${plan.price}</span><span className="text-[9px] uppercase tracking-[0.16em] text-white/35 mb-3">/ month</span></div>
+              <p className="text-sm text-white/50 mt-4 mb-5">{plan.description}</p>
+              <ul className="space-y-3 mb-6 flex-1">
+                {plan.features.map((feature) => <li key={feature} className="flex items-center gap-3 text-xs text-white/65"><Check size={14} className="text-amber-500" />{feature}</li>)}
+              </ul>
+              <ReadimentaryButton fullWidth color={plan.color} onClick={() => user ? onEnter() : setShowLogin(true)}>Choose {plan.name}</ReadimentaryButton>
+            </article>
+          ))}
+        </div>
+        <p className="mt-4 text-center text-[10px] uppercase tracking-[0.14em] text-white/30">Annual billing will include a 20% discount. Checkout is coming next.</p>
+      </section>
+
+      <section className="order-[40] w-full relative py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto overflow-hidden">
         <div className="absolute left-6 right-6 top-28 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        <div className="grid lg:grid-cols-[0.72fr_1.28fr] gap-12 lg:gap-20 items-start mb-16">
+        <div className="grid lg:grid-cols-[0.72fr_1.28fr] gap-8 lg:gap-12 items-start mb-10">
           <div className="lg:sticky lg:top-28">
             <div className="flex items-center gap-3 text-[10px] tracking-[0.24em] uppercase text-amber-500/80 font-bold mb-6"><span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_14px_rgba(245,158,11,.8)]" /> Why Readimentary</div>
             <h2 className="text-3xl md:text-5xl font-black tracking-[-0.04em] leading-[1.05] text-white mb-6">Built for the moment reading turns into momentum.</h2>
@@ -721,7 +746,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
       </section>
 
-      <section id="features" className="py-14 md:py-18 border-t border-white/5">
+      <section id="features" className="order-[50] w-full py-10 md:py-12 border-t border-white/5">
         <div
           className={`relative w-full transition-all duration-500 ${
             featuresHighlighted ? 'ring-1 ring-amber-500/50 bg-amber-500/[0.03]' : ''
@@ -729,85 +754,25 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         >
           <TechnicalGrid />
           <div className="px-6">
-            <SectionHeader title="Features" subtitle="Why RSVP improves reading flow" />
+            <SectionHeader title="Features" subtitle="What the reader does" />
           </div>
 
-          <div className="relative max-w-6xl mx-auto px-6">
+          <div className="relative max-w-7xl mx-auto px-4 md:px-6">
             <div className={`rounded-3xl border bg-white/[0.03] transition-colors duration-500 overflow-hidden ${featuresHighlighted ? 'border-amber-500/40' : 'border-white/10'}`}>
-              <div className="mx-4 md:mx-6 mt-4 mb-4 border border-white/10 overflow-hidden rounded-2xl">
-                <div className="px-4 md:px-6 pt-4 pb-2 text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 bg-white/[0.02]">
-                  Reading Comparison: Traditional vs. RSVP
-                </div>
-                <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[820px]">
-                  <thead>
-                    <tr className="bg-white/5">
-                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">Reading Metric</th>
-                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">Traditional Reading</th>
-                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">RSVP Reading</th>
-                      <th className="px-5 py-4 text-[10px] tracking-[0.2em] uppercase text-white/60">Why It Matters</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-t border-white/10 bg-white/[0.01]">
-                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Eye Movement</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Rigid horizontal jumping</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">Fixed focal point focus</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Less saccade overhead improves sustained attention.</td>
-                    </tr>
-                    <tr className="border-t border-white/10">
-                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Vocal Load</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">Sub-vocalization limits pace</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">High-pace elimination</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Controlled presentation reduces the impulse to internally narrate every word.</td>
-                    </tr>
-                    <tr className="border-t border-white/10 bg-white/[0.01]">
-                      <td className="px-5 py-4 text-sm text-white/85 font-semibold">Throughput</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/60">~250 WPM</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-amber-500/90 font-medium">400–900+ WPM</td>
-                      <td className="px-5 py-4 text-sm leading-relaxed text-white/55">Useful for scanning and high-volume reading sessions.</td>
-                    </tr>
-                  </tbody>
-                </table>
-                </div>
-
-                <div className="px-4 md:px-6 py-5 border-t border-white/10 bg-white/[0.015]">
-                  <h4 className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/55 mb-4">Quick Visual Comparison</h4>
-                  <div className="space-y-4">
-                    {comparisonGraphData.map((item) => (
-                      <div key={item.label}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs tracking-[0.08em] uppercase text-white/70">{item.label}</span>
-                          <span className="text-[10px] text-white/45">Traditional {item.traditional}% | RSVP {item.rsvp}%</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                            <div className="data-bar h-full bg-white/40 rounded-full" style={{ width: `${item.traditional}%` }} />
-                          </div>
-                          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                            <div className="data-bar h-full bg-gradient-to-r from-amber-500/75 to-teal-400/65 rounded-full" style={{ width: `${item.rsvp}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-4 md:px-6 py-8 border-t border-white/10">
+              <div className="px-4 md:px-6 py-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-7">
                   <div>
-                    <p className="text-[9px] tracking-[0.24em] uppercase text-amber-500/80 font-bold mb-2">Engine capability map</p>
-                    <h3 className="text-xl md:text-3xl font-bold tracking-tight text-white">Everything you need.<br/><span className="text-white/35">Nothing between you and the words.</span></h3>
+                    <p className="text-[9px] tracking-[0.24em] uppercase text-amber-500/80 font-bold mb-2">Reader capabilities</p>
+                    <h3 className="text-xl md:text-3xl font-bold tracking-tight text-white">Read PDFs at your pace.</h3>
                   </div>
-                  <p className="text-xs leading-relaxed text-white/45 max-w-md">A complete reading pipeline expressed through four purpose-built systems—each with its own behavior, visual language, and job.</p>
+                  <p className="text-xs leading-relaxed text-white/45 max-w-md">Four tools for importing, navigating, reading, and tracking PDFs.</p>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 auto-rows-[minmax(210px,auto)]">
                   <article className="group lg:col-span-7 lg:row-span-2 relative rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.09] via-black/30 to-black/60 p-7 md:p-9 overflow-hidden hover:border-amber-500/40 transition-colors">
                     <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(rgba(245,158,11,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,.18) 1px,transparent 1px)', backgroundSize: '32px 32px' }} />
                     <div className="relative flex items-center justify-between mb-12"><span className="text-[9px] font-mono tracking-[0.2em] text-amber-500">01 / STREAM CORE</span><Zap size={20} className="text-amber-500" /></div>
                     <div className="relative grid md:grid-cols-[1fr_210px] gap-8 items-end">
-                      <div><h4 className="text-2xl md:text-3xl font-black tracking-tight text-white mb-4">Page one arrives first.</h4><p className="text-sm leading-7 text-white/55 max-w-lg">The worker releases readable tokens from the opening page immediately. Page maps, chapters, and totals continue assembling in the background while your session is already moving.</p></div>
+                      <div><h4 className="text-2xl md:text-3xl font-black tracking-tight text-white mb-4">Start before parsing finishes.</h4><p className="text-sm leading-7 text-white/55 max-w-lg">Begin with the first page while the rest of the PDF is processed in the background.</p></div>
                       <svg viewBox="0 0 210 210" className="w-full max-w-[210px] mx-auto" aria-hidden="true"><circle cx="105" cy="105" r="76" fill="#f59e0b" fillOpacity=".05" stroke="#f59e0b" strokeOpacity=".25"/><circle cx="105" cy="105" r="50" fill="none" stroke="#f59e0b" strokeOpacity=".35" strokeDasharray="4 7"/><path d="M105 20v38M105 152v38M20 105h38M152 105h38" stroke="#f59e0b" strokeOpacity=".45"/><rect x="82" y="72" width="46" height="66" rx="5" fill="#090909" stroke="#f59e0b" strokeOpacity=".6"/><path d="M91 88h28M91 99h22M91 110h26M91 121h16" stroke="#f59e0b" strokeOpacity=".65"/><circle cx="105" cy="105" r="4" fill="#2dd4bf"/></svg>
                     </div>
                     <div className="relative mt-9 flex items-center gap-3 text-[9px] uppercase tracking-[0.15em] text-white/35"><span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"/> Reader ready before document completion</div>
@@ -816,7 +781,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                   <article className="group lg:col-span-5 relative rounded-3xl border border-teal-500/20 bg-teal-500/[0.045] p-7 overflow-hidden hover:border-teal-500/40 transition-colors">
                     <div className="flex items-start justify-between mb-6"><div><span className="text-[9px] font-mono tracking-[0.2em] text-teal-400">02 / OPTICAL MAP</span><h4 className="text-xl font-bold text-white mt-3">Adaptive ORP alignment</h4></div><Eye size={20} className="text-teal-400"/></div>
                     <div className="relative h-20 rounded-xl border-y border-white/[0.07] flex items-center justify-center mb-5"><div className="absolute h-full w-px bg-teal-400/60"/><div className="text-3xl font-serif tracking-tight"><span className="text-white/35">fo</span><span className="text-teal-400 font-bold">c</span><span className="text-white/35">used</span></div></div>
-                    <p className="text-xs leading-6 text-white/50">Every token is measured and positioned around its optimal recognition point, keeping the eye anchored as word length changes.</p>
+                    <p className="text-xs leading-6 text-white/50">Words stay aligned around a consistent focal point as their length changes.</p>
                   </article>
 
                   <article className="group lg:col-span-3 relative rounded-3xl border border-white/10 bg-white/[0.025] p-6 overflow-hidden hover:border-pink-500/30 transition-colors">
@@ -860,7 +825,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       {/* ... (rest of sections: stats, pricing, faq, footer, modal remain identical) */}
       
       {/* --- STATS BAR --- */}
-      <div className="bg-white/5 border-y border-white/5 py-12 backdrop-blur-md">
+      <div className="order-[55] w-full bg-white/5 border-y border-white/5 py-8 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
           {[
             { icon: <Lock size={20}/>, label: "Private Local Data" },
@@ -876,7 +841,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
       </div>
 
-      <section className="py-16 md:py-20 px-6 max-w-7xl mx-auto border-t border-white/5">
+      <section className="order-[10] w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
         <SectionHeader title="Reading Signals" subtitle="A clearer sense of value at a glance" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           <article className="lg:col-span-8 relative rounded-3xl border border-white/10 bg-[#090909] overflow-hidden p-7 md:p-9 min-h-[390px]">
@@ -910,8 +875,8 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       </section>
 
 
-      <section className="py-16 md:py-20 px-6 max-w-7xl mx-auto border-t border-white/5">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
+      <section className="order-[20] w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-9">
           <div>
             <div className="text-[10px] tracking-[0.24em] uppercase text-teal-400/70 font-bold mb-5">Selected reading modes</div>
             <h2 className="text-3xl md:text-5xl font-black tracking-[-0.04em] text-white max-w-2xl leading-[1.05]">Different material. One engine that changes pace with you.</h2>
@@ -945,45 +910,48 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
       </section>
 
-
-      {/* --- PRICING SECTION --- */}
-      <section id="pricing" className="py-16 md:py-20 px-6 max-w-7xl mx-auto">
-        <SectionHeader title="Pricing" subtitle="Pick your reading tier" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-6xl mx-auto items-stretch">
-          <article className="lg:col-span-4 relative rounded-3xl border border-amber-500/35 bg-gradient-to-b from-amber-500/[0.14] via-amber-500/[0.045] to-[#090909] p-7 md:p-8 flex flex-col overflow-hidden shadow-[0_0_60px_rgba(245,158,11,0.06)]">
-            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full border border-amber-500/15"/><div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border border-amber-500/20"/>
-            <div className="relative flex items-center justify-between mb-8"><div className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"/><span className="text-[9px] font-mono text-amber-500">01 / FREE FOREVER</span></div><div className="w-10 h-10 rounded-xl border border-amber-500/30 bg-amber-500/15 flex items-center justify-center"><BookOpen size={17} className="text-amber-400"/></div></div>
-            <div className="relative mb-7"><div className="flex items-end gap-2"><span className="text-6xl font-black tracking-[-0.06em] text-white">$0</span><span className="text-[9px] uppercase tracking-[0.16em] text-amber-500/70 mb-3">no expiry</span></div><h3 className="text-2xl font-bold text-white mt-4 mb-3">Your first complete reading room.</h3><p className="text-xs leading-6 text-white/55">Upload one full PDF and use the same speed, optical, chapter, and progress systems as Lifetime.</p></div>
-            <div className="relative rounded-2xl border border-amber-500/15 bg-black/25 p-5 mb-6"><div className="flex items-center justify-between mb-5"><span className="text-[8px] uppercase tracking-[0.16em] text-white/35">Document allocation</span><span className="text-[9px] font-mono text-amber-500">1 / 1</span></div><div className="h-2 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full w-full rounded-full bg-gradient-to-r from-amber-600 to-amber-300"/></div><div className="mt-3 text-[9px] text-white/35">One slot. Unlimited pages. Unlimited sessions.</div></div>
-            <div className="relative grid grid-cols-2 gap-2 mb-7 flex-1"><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4"><ScanLine size={14} className="text-amber-500 mb-3"/><b className="block text-[10px] text-white">ORP engine</b></div><div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4"><Gauge size={14} className="text-teal-400 mb-3"/><b className="block text-[8px] text-white">300–900 WPM</b></div><div className="col-span-2 flex items-center gap-3 px-4 py-3 border-l-2 border-pink-500/40 bg-pink-500/[0.035]"><Layers3 size={14} className="text-pink-400"/><span className="text-[10px] text-white/55">Chapter detection + persistent progress</span></div></div>
-            <div className="relative"><ReadimentaryButton color="amber" onClick={() => user ? onEnter() : setShowLogin(true)}>Start Free <ArrowRight size={14}/></ReadimentaryButton></div>
-          </article>
-
-          <article className="lg:col-span-8 relative rounded-3xl border border-teal-500/30 bg-gradient-to-br from-teal-500/[0.10] via-[#0a0a0a] to-amber-500/[0.05] p-7 md:p-10 overflow-hidden">
-            <div className="absolute inset-0 opacity-15" style={{backgroundImage:'radial-gradient(circle at center, #2dd4bf 1px, transparent 1px)',backgroundSize:'26px 26px'}}/>
-            <div className="relative"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-9"><div className="flex items-center gap-3"><span className="text-[9px] font-mono text-teal-400">02 / LIFETIME</span><span className="rounded-full border border-teal-500/25 bg-teal-500/10 px-3 py-1 text-[8px] uppercase tracking-[0.16em] text-teal-400">Recommended</span></div><div className="flex items-center gap-2 text-[8px] uppercase tracking-[0.15em] text-white/30"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"/> Single payment</div></div>
-              <div className="grid md:grid-cols-[1fr_1.05fr] gap-10 items-start"><div><div className="flex items-end gap-3"><span className="text-6xl md:text-7xl font-black tracking-[-0.06em] text-white">$10</span><span className="text-[9px] uppercase tracking-[0.16em] text-white/30 mb-3">once</span></div><h3 className="text-2xl font-bold text-white mt-6 mb-4">Build the library you actually want to finish.</h3><p className="text-sm leading-7 text-white/50">Unlimited document slots, continuous ingestion, and every reader capability—owned for life without a subscription.</p></div>
-                <div className="grid sm:grid-cols-2 gap-3"><div className="rounded-2xl border border-white/10 bg-black/25 p-5"><Database size={17} className="text-teal-400 mb-5"/><b className="block text-xs text-white mb-2">Unlimited library</b><span className="text-[10px] leading-5 text-white/35">Add every PDF in your reading queue.</span></div><div className="rounded-2xl border border-white/10 bg-black/25 p-5"><Activity size={17} className="text-amber-500 mb-5"/><b className="block text-xs text-white mb-2">Live analytics</b><span className="text-[10px] leading-5 text-white/35">Track pace, sessions, and completion.</span></div><div className="sm:col-span-2 rounded-2xl border border-white/10 bg-white/[0.025] p-5 flex gap-4 items-center"><Shield size={18} className="text-pink-400 shrink-0"/><div><b className="block text-xs text-white mb-1">Future core reader upgrades included</b><span className="text-[10px] text-white/35">No renewal, usage meter, or recurring fee.</span></div></div></div></div>
-              <div className="mt-9 pt-7 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-5"><ReadimentaryButton color="teal" onClick={() => user ? onEnter() : setShowLogin(true)}>Open Reader</ReadimentaryButton><span className="text-[9px] uppercase tracking-[0.14em] text-white/30 flex items-center gap-2"><Lock size={11}/> Payments temporarily disabled</span></div>
+      <section id="about" className="order-[58] w-full border-t border-white/[0.06] px-4 md:px-6 py-10 md:py-12">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-[1.35fr_1fr] gap-8 lg:gap-14 items-start">
+          <div>
+            <div className="text-[10px] tracking-[0.24em] uppercase text-amber-500/80 font-bold mb-5">About Readimentary</div>
+            <h2 className="text-3xl md:text-4xl font-black tracking-[-0.04em] leading-tight text-white max-w-2xl">A focused reader for people with more to read than time.</h2>
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-white/50">Readimentary turns PDFs into adjustable RSVP reading sessions. It helps readers move through long documents, keep their place, and review material at a pace that fits the task.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+              <span className="text-[9px] uppercase tracking-[0.18em] text-teal-400">Contact</span>
+              <h3 className="text-lg font-bold text-white mt-3">Questions or feedback?</h3>
+              <p className="text-xs leading-6 text-white/45 mt-2 mb-5">Tell us what you are reading and where the experience can improve.</p>
+              <a href="mailto:support@readimentary.app" className="text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors">support@readimentary.app</a>
             </div>
-          </article>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+              <span className="text-[9px] uppercase tracking-[0.18em] text-pink-400">Quick links</span>
+              <div className="mt-4 flex flex-col gap-3 text-xs text-white/55">
+                <ScrollLink to="features" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Features</ScrollLink>
+                <ScrollLink to="pricing" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Pricing</ScrollLink>
+                <button type="button" onClick={() => setShowLogin(true)} className="text-left hover:text-white">Get started</button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06] bg-black px-6 py-10">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-5">
-          <div className="flex items-center gap-3"><div className="w-6 h-6 border border-amber-500/40 flex items-center justify-center"><div className="w-2 h-2 bg-amber-500" /></div><span className="text-[10px] font-bold tracking-[0.32em] uppercase text-white/55">Readimentary</span></div>
-          <p className="text-[9px] text-white/25 tracking-[0.16em] uppercase text-center">© 2026 Readimentary. All rights reserved.</p>
-          <p className="text-[8px] text-white/20 tracking-[0.16em] uppercase">RSVP reading engine</p>
+      <footer className="order-[60] w-full border-t border-white/[0.06] bg-black px-4 md:px-6 py-8">
+        <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr] gap-8 py-3">
+          <div><div className="flex items-center gap-3"><div className="w-6 h-6 border border-amber-500/40 flex items-center justify-center"><div className="w-2 h-2 bg-amber-500" /></div><span className="text-[10px] font-bold tracking-[0.32em] uppercase text-white/55">Readimentary</span></div><p className="mt-4 text-xs leading-6 text-white/35 max-w-xs">A local-first RSVP reader for focused PDF reading and review.</p></div>
+          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Product</h3><div className="flex flex-col gap-3 text-xs text-white/50"><ScrollLink to="features" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Features</ScrollLink><ScrollLink to="pricing" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Pricing</ScrollLink><button type="button" onClick={() => setShowLogin(true)} className="text-left hover:text-white">Get started</button></div></div>
+          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Company</h3><div className="flex flex-col gap-3 text-xs text-white/50"><ScrollLink to="about" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">About</ScrollLink><a href="mailto:support@readimentary.app" className="hover:text-white">Contact</a></div></div>
+          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Support</h3><div className="flex flex-col gap-3 text-xs text-white/50"><a href="mailto:support@readimentary.app?subject=Readimentary%20Support" className="hover:text-white">Help</a><a href="mailto:support@readimentary.app?subject=Privacy%20Question" className="hover:text-white">Privacy questions</a><a href="mailto:support@readimentary.app?subject=Billing%20Question" className="hover:text-white">Billing questions</a></div></div>
         </div>
+        <div className="max-w-7xl mx-auto mt-7 pt-5 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3"><p className="text-[9px] text-white/25 tracking-[0.16em] uppercase">© 2026 Readimentary. All rights reserved.</p><p className="text-[8px] text-white/20 tracking-[0.16em] uppercase">RSVP reading engine</p></div>
       </footer>
 
       {/* Login Modal */}
       {showLogin && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowLogin(false)} />
-          <div className="relative w-full max-w-md bg-zinc-900 border border-white/10 p-8 shadow-2xl rounded-2xl">
+          <div className="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto bg-zinc-900 border border-white/10 p-6 md:p-8 shadow-2xl rounded-2xl">
             <button
               onClick={() => setShowLogin(false)}
               className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
@@ -993,11 +961,24 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             </button>
 
             <div className="mb-8">
-              <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">Enter Reader</h2>
+              <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">Get started</h2>
               <p className="text-[10px] text-white/40 tracking-[0.15em] uppercase mt-3">
-                Local preview access · your PDFs remain in this browser
+                One account flow for new and returning readers
               </p>
             </div>
+
+            <div className="grid sm:grid-cols-2 gap-3 mb-6">
+              <button type="button" onClick={() => handleSocialLogin('Google')} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-semibold text-white hover:bg-white/[0.08] hover:border-white/20 transition-colors">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 01-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.8 5.8 0 01-5.4-4H3.3v2.6A10 10 0 0012 22z"/><path fill="#FBBC05" d="M6.6 14.1a6 6 0 010-4.2V7.3H3.3a10 10 0 000 9.4l3.3-2.6z"/><path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0012 2a10 10 0 00-8.7 5.3l3.3 2.6a5.8 5.8 0 015.4-4z"/></svg>
+                Google
+              </button>
+              <button type="button" onClick={() => handleSocialLogin('Apple')} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-black px-4 py-3 text-xs font-semibold hover:bg-white/90 transition-colors">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true"><path d="M17.1 12.5c0-2.4 2-3.6 2.1-3.7a4.6 4.6 0 00-3.6-2c-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9A4.9 4.9 0 004.4 9.3c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.4-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.5a11 11 0 001.4-2.9 4.1 4.1 0 01-3.1-4.1zM14.6 5.2A4.2 4.2 0 0015.6 2a4.5 4.5 0 00-3 1.5 4 4 0 00-1 3.1 3.7 3.7 0 003-1.4z"/></svg>
+                Apple
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-6"><div className="h-px flex-1 bg-white/10"/><span className="text-[9px] uppercase tracking-[0.18em] text-white/25">or continue with email</span><div className="h-px flex-1 bg-white/10"/></div>
 
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div className="space-y-2">
@@ -1055,15 +1036,16 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                   disabled={authBusy}
                   className="relative z-10 w-full flex items-center justify-center gap-3 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-6 py-4 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase"
                 >
-                  {authBusy ? 'Opening…' : 'Continue to Reader'} <ArrowRight size={14} />
+                  {authBusy ? 'Opening…' : 'Continue'} <ArrowRight size={14} />
                 </button>
                 <div className="absolute inset-0 border border-amber-500/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
               </div>
             </form>
 
             {authError && <p role="alert" className="mt-4 text-xs text-red-400 leading-relaxed">{authError}</p>}
+            {socialNotice && <p role="status" className="mt-4 text-xs text-amber-400/80 leading-relaxed">{socialNotice}</p>}
 
-            <p className="mt-6 text-[9px] text-white/30 tracking-[0.12em] uppercase leading-relaxed">Email and password are optional during local preview mode.</p>
+            <p className="mt-6 text-[9px] text-white/30 tracking-[0.12em] uppercase leading-relaxed">New here or returning? Use the same Get Started flow. Preview credentials are not verified or sent to a server.</p>
           </div>
         </div>
       )}
