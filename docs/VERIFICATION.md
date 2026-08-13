@@ -20,7 +20,7 @@ Verified on 2026-08-13 for branch `feat/production-auth-billing-product`.
 | Vercel packaging | Vercel deployment for the current commit completed successfully. Root `api/` functions are included and SPA rewrites exclude `/api`. | Passed |
 | Public preview | The generated preview URL is protected by Vercel authentication, so anonymous page/API acceptance requests receive the Vercel protection page. | Externally blocked |
 | Production build | `npm run build` exits successfully. | Passed |
-| Automated tests | `npm test` passes 23 tests across 6 files. | Passed |
+| Automated tests | `npm test` passes 25 tests across 6 files. | Passed |
 | Progressive parser | `node scripts/verify-progressive-parser.mjs` passes and observes page-one-first extraction with totals increasing through completion. | Passed |
 | Lint | `npm run lint` exits successfully with two pre-existing React Hook warnings in `ScrollStack.jsx` and `PDFViewer.jsx`. | Passed with known warnings |
 | Package dry run | `npm pack --dry-run --json` exits successfully and enumerates 68 files. | Passed |
@@ -52,10 +52,10 @@ Verified on 2026-08-13 for branch `feat/production-auth-billing-product`.
 | Subscription mode and identity metadata | Checkout payload tests observe `mode: subscription`, the server price, and Clerk user ID as `client_reference_id`/metadata. |
 | Customer reuse and safe redirects | Handler inspection/tests use the database customer record and server `APP_URL`; no browser customer ID or redirect URL is accepted. |
 | Success does not grant access | Billing status reads subscription records only. No redirect query or client flag changes entitlement. |
-| Webhook raw body and signature | The Vercel webhook disables body parsing. Real HTTP requests with missing/invalid signatures return `400 INVALID_SIGNATURE`. |
+| Webhook raw body and signature | The Vercel webhook disables body parsing. Real HTTP requests with missing/invalid signatures return `400 INVALID_SIGNATURE`; a raw request signed by the real Stripe SDK returns `200` through the local HTTP adapter; and the same boundary is covered by an automated integration test. |
 | Webhook idempotency and events | Transactional handler tests observe duplicate event short-circuiting. Event handlers cover checkout, subscription created/updated/deleted, invoice paid, and invoice failed. |
 | Entitlement policy | Tests observe `active`/`trialing` as entitled and `past_due` as free; cancellation and period fields come from server records. |
-| Customer Portal | Signed-out public requests return `401`; handler derives the Stripe customer from the authenticated user’s database record. Live portal creation is credential-blocked. |
+| Customer Portal | Signed-out public requests return `401`; supplied browser customer IDs are explicitly rejected; and the handler derives the Stripe customer from the authenticated user’s database record. Live portal creation is credential-blocked. |
 | Billing UI | Pricing and account UI render status/loading/error paths and expose Manage billing only when server status permits. Live subscription transitions are credential-blocked. |
 | Postgres persistence | Migration constraints and transactional SQL are included. Durable behavior cannot be observed until a managed database is provisioned and migrated. |
 | Vercel routing and methods | The deployment succeeds, `/api` is excluded from SPA rewriting, wrong methods return `405`, and unknown API routes return JSON `404`. |

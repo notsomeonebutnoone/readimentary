@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
+import Stripe from 'stripe';
 import { createCheckoutHandler } from './billing/checkout.mjs';
 import { createPortalHandler } from './billing/portal.mjs';
 import { createStatusHandler } from './billing/status.mjs';
@@ -70,10 +71,17 @@ describe('billing checkout', () => {
 });
 
 describe('billing portal', () => {
+  it('rejects a browser supplied customer ID', async () => {
+    const out = res();
+    await createPortalHandler({ requireAuth: authed(), sql: fakeSql(), stripe: {} })(req({ method: 'POST', body: { customerId: 'cus_attacker' } }), out);
+    expect(out.statusCode).toBe(400);
+    expect(out.json.error.code).toBe('UNTRUSTED_BILLING_INPUT');
+  });
+
   it('derives the customer from the authenticated user record', async () => {
     const create = vi.fn(async () => ({ url: 'https://billing.test' }));
     const out = res();
-    await createPortalHandler({ requireAuth: authed('user_9'), sql: fakeSql({ customer: 'cus_server' }), stripe: { billingPortal: { sessions: { create } } }, env: { APP_URL: 'https://app.test' } })(req({ method: 'POST', body: { customerId: 'cus_attacker' } }), out);
+    await createPortalHandler({ requireAuth: authed('user_9'), sql: fakeSql({ customer: 'cus_server' }), stripe: { billingPortal: { sessions: { create } } }, env: { APP_URL: 'https://app.test' } })(req({ method: 'POST' }), out);
     expect(out.statusCode).toBe(200);
     expect(create).toHaveBeenCalledWith({ customer: 'cus_server', return_url: 'https://app.test/?billing=portal' });
   });
@@ -91,6 +99,17 @@ describe('billing status', () => {
 });
 
 describe('stripe webhook', () => {
+  it('accepts a raw request signed by the real Stripe SDK', async () => {
+    const secret = 'whsec_test_boundary';
+    const payload = JSON.stringify({ id: 'evt_sdk_1', object: 'event', type: 'radar.early_fraud_warning.created', data: { object: {} } });
+    const stripe = new Stripe('sk_test_boundary');
+    const signature = stripe.webhooks.generateTestHeaderString({ payload, secret });
+    const out = res();
+    await createStripeWebhookHandler({ sql: fakeSql(), stripe, env: { STRIPE_WEBHOOK_SECRET: secret } })(req({ method: 'POST', body: payload, headers: { 'stripe-signature': signature } }), out);
+    expect(out.statusCode).toBe(200);
+    expect(out.json).toMatchObject({ received: true, ignored: true });
+  });
+
   it('rejects invalid signatures', async () => {
     const out = res();
     const stripe = { webhooks: { constructEvent: vi.fn(() => { throw new Error('bad sig'); }) } };
