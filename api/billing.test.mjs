@@ -110,6 +110,40 @@ describe('stripe webhook', () => {
     expect(out.json).toMatchObject({ received: true, ignored: true });
   });
 
+  it('short-circuits duplicate signed deliveries through the complete handler', async () => {
+    const secret = 'whsec_test_idempotency';
+    const payload = JSON.stringify({
+      id: 'evt_handler_duplicate',
+      object: 'event',
+      type: 'customer.subscription.updated',
+      data: { object: { id: 'sub_1', customer: 'cus_1', status: 'active', metadata: { clerk_user_id: 'user_1', plan: 'individual', billing_interval: 'monthly' }, items: { data: [{ price: { id: 'price_1', recurring: { interval: 'month' } } }] } } }
+    });
+    const stripe = new Stripe('sk_test_boundary');
+    const signature = stripe.webhooks.generateTestHeaderString({ payload, secret });
+    const processedEvents = new Set();
+    const writes = [];
+    const sql = {
+      begin: async (callback) => callback(async (strings, ...values) => {
+        const text = strings.join('?');
+        writes.push(text);
+        if (!text.includes('insert into stripe_events')) return [];
+        if (processedEvents.has(values[0])) return [];
+        processedEvents.add(values[0]);
+        return [{ id: values[0] }];
+      })
+    };
+
+    const first = res();
+    await createStripeWebhookHandler({ sql, stripe, env: { STRIPE_WEBHOOK_SECRET: secret } })(req({ method: 'POST', body: payload, headers: { 'stripe-signature': signature } }), first);
+    const writesAfterFirst = writes.length;
+    const second = res();
+    await createStripeWebhookHandler({ sql, stripe, env: { STRIPE_WEBHOOK_SECRET: secret } })(req({ method: 'POST', body: payload, headers: { 'stripe-signature': signature } }), second);
+
+    expect(first.json).toMatchObject({ received: true, processed: true });
+    expect(second.json).toMatchObject({ received: true, duplicate: true });
+    expect(writes.slice(writesAfterFirst)).toHaveLength(1);
+  });
+
   it('rejects invalid signatures', async () => {
     const out = res();
     const stripe = { webhooks: { constructEvent: vi.fn(() => { throw new Error('bad sig'); }) } };
