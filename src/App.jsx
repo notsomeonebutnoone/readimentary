@@ -1,15 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Landing from './Landing';
 import LibraryScreen from './screens/LibraryScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import ChaptersScreen from './screens/ChaptersScreen';
 import ReaderScreen from './screens/ReaderScreen';
 import SettingsModal from './components/app/SettingsModal';
+import StaticPage, { STATIC_PATHS } from './components/StaticPage';
+import { AccountMenu, useAppAuth } from './auth/AuthProvider';
+import { api } from './lib/apiClient';
+import { canAccessScreen } from './lib/accessControl';
 import { ensurePdfJsLoaded } from './lib/pdfEngine';
 import { parsePdfProgressively } from './lib/progressivePdfParser';
 import { savePdfBlob, loadPdfBlob, deletePdfBlob } from './lib/pdfBlobStore';
 import {
-  getUserId,
   loadSettings,
   saveSettings,
   loadLibrary,
@@ -20,6 +23,11 @@ import {
 } from './lib/appStorage';
 
 export default function App() {
+  const auth = useAppAuth();
+  const { closeAuth, getToken, isLoaded: authLoaded, openAuth } = auth;
+  const user = auth.user;
+  const staticPath = STATIC_PATHS.includes(window.location.pathname) ? window.location.pathname : null;
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'support@readimentary.app';
   const [screen, setScreen] = useState('home');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [library, setLibrary] = useState([]);
@@ -32,10 +40,9 @@ export default function App() {
   const [isImporting, setIsImporting] = useState(false);
   const [chapterProgressMap, setChapterProgressMap] = useState({});
   const [readingStats, setReadingStats] = useState(createDefaultAnalytics());
-  const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState('');
-  const [authStatus, setAuthStatus] = useState('unauthenticated');
-  const [loginRequestKey, setLoginRequestKey] = useState(0);
+  const [appError, setAppError] = useState('');
+  const [billing, setBilling] = useState({ loading: false, error: '', status: null });
 
   const [wpm, setWpm] = useState(350);
   const [fontSize, setFontSize] = useState(56);
@@ -47,6 +54,7 @@ export default function App() {
   const userIdRef = useRef(null);
   const statsBufferRef = useRef({ ms: 0, words: 0 });
   const prevReaderPlayingRef = useRef(false);
+  const intendedScreenRef = useRef(null);
 
   const fonts = [
     { name: 'Classic Serif', value: 'ui-serif, Georgia, serif' },
@@ -100,6 +108,65 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!authLoaded) return;
+    if (!user) {
+      userIdRef.current = null;
+      setLibrary([]);
+      setReadingStats(createDefaultAnalytics());
+      if (screen !== 'home') setScreen('home');
+      return;
+    }
+
+    if (userIdRef.current !== user.id) {
+      userIdRef.current = user.id;
+      setLibrary(loadLibrary(user.id));
+      setReadingStats(loadAnalytics(user.id));
+    }
+    closeAuth();
+    const savedDestination = intendedScreenRef.current || window.sessionStorage.getItem('readimentary_intended_screen');
+    if (savedDestination) {
+      const destination = savedDestination;
+      intendedScreenRef.current = null;
+      window.sessionStorage.removeItem('readimentary_intended_screen');
+      navigateTo(destination);
+    }
+  }, [authLoaded, closeAuth, user, screen]);
+
+  const refreshBilling = useCallback(async () => {
+    if (!user) {
+      setBilling({ loading: false, error: '', status: null });
+      return;
+    }
+    setBilling((current) => ({ ...current, loading: true, error: '' }));
+    try {
+      const status = await api.billingStatus(getToken);
+      setBilling({ loading: false, error: '', status });
+    } catch (error) {
+      setBilling({ loading: false, error: error.message, status: null });
+    }
+  }, [getToken, user]);
+
+  useEffect(() => {
+    if (!authLoaded) return;
+    refreshBilling();
+  }, [authLoaded, refreshBilling]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!user || params.get('checkout') !== 'success') return;
+    const timer = window.setTimeout(refreshBilling, 1200);
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+    return () => window.clearTimeout(timer);
+  }, [user, refreshBilling]);
+
+  const requestSignIn = useCallback((destination = 'library') => {
+    intendedScreenRef.current = destination;
+    window.sessionStorage.setItem('readimentary_intended_screen', destination);
+    setAuthError('');
+    openAuth();
+  }, [openAuth]);
+
+  useEffect(() => {
     window.history.replaceState({ screen: 'home' }, '', window.location.pathname);
   }, []);
 
@@ -107,9 +174,9 @@ export default function App() {
     const onPopState = (event) => {
       const nextScreen = event.state?.screen;
       if (!nextScreen) return;
-      if (nextScreen !== 'home' && !user) {
+      if (!canAccessScreen(nextScreen, user)) {
         setScreen('home');
-        setLoginRequestKey((key) => key + 1);
+        requestSignIn(nextScreen);
         return;
       }
       setIsPlaying(false);
@@ -118,10 +185,15 @@ export default function App() {
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [user]);
+  }, [requestSignIn, user]);
 
   useEffect(() => {
     const defaultTitle = 'Readimentary';
+    if (staticPath) {
+      const label = staticPath.slice(1).replace(/(^|-)\w/g, (match) => match.replace('-', ' ').toUpperCase());
+      document.title = `Readimentary | ${label}`;
+      return;
+    }
     if (screen === 'home') {
       document.title = 'Readimentary | Landing';
       return;
@@ -145,7 +217,7 @@ export default function App() {
       return;
     }
     document.title = defaultTitle;
-  }, [screen, currentBook?.title, currentChapter?.title]);
+  }, [screen, staticPath, currentBook?.title, currentChapter?.title]);
 
   useEffect(() => {
     if (screen !== 'reader') return;
@@ -244,22 +316,23 @@ export default function App() {
   const handleFileUpload = async (e) => {
     if (!user) {
       setScreen('home');
-      setLoginRequestKey((key) => key + 1);
+      requestSignIn('library');
       if (e.target) e.target.value = '';
       return;
     }
     const file = e.target.files?.[0];
     if (!file) return;
+    let opened = false;
+    let bookId = null;
     setIsImporting(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
       const bufferForViewer = arrayBuffer.slice(0);
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       const pdfUrl = URL.createObjectURL(blob);
-      const bookId = crypto.randomUUID?.() || Date.now().toString();
+      bookId = crypto.randomUUID?.() || Date.now().toString();
       const title = file.name.replace(/\.pdf$/i, '');
       await savePdfBlob(bookId, blob).catch(() => {});
-      let opened = false;
       const applySnapshot = (snapshot, final = false) => {
         const chapters = final ? snapshot.chapters : [{ id: `${bookId}-live`, title: 'Live extraction', startIndex: 0, wordCount: snapshot.words.length }];
         const bookData = { id: bookId, title, ...snapshot, chapters, pdfUrl, pdfData: bufferForViewer, currentIndex: 0, chapterProgressMap: {} };
@@ -284,7 +357,11 @@ export default function App() {
       applySnapshot(result, true);
     } catch (err) {
       console.error('PDF error:', err);
-      setAuthError(err.message || 'The PDF could not be imported.');
+      setAppError(err.message || 'The PDF could not be imported.');
+      if (opened) {
+        setCurrentBook((book) => book ? { ...book, status: 'error', parsingError: err.message || 'The PDF could not be parsed.' } : book);
+        setLibrary((books) => books.map((book) => book.id === bookId ? { ...book, status: 'error', parsingError: err.message || 'The PDF could not be parsed.' } : book));
+      }
     } finally {
       setIsImporting(false);
       if (e.target) e.target.value = '';
@@ -382,8 +459,7 @@ export default function App() {
 
   const handleEnterLibrary = () => {
     if (!user) {
-      setAuthError('Sign in to open your reading workspace.');
-      setLoginRequestKey((key) => key + 1);
+      requestSignIn('library');
       return;
     }
     setIsTransitioning(true);
@@ -393,20 +469,28 @@ export default function App() {
     }, 400);
   };
 
-  const handleEmailAuth = async ({ email }) => {
-    setAuthError('');
-    const localId = getUserId();
-    const localUser = { id: localId, email: email || 'local-preview@readimentary.app', isLocal: true, isPaid: false, tier: 'preview' };
-    setUser(localUser);
-    setAuthStatus('authenticated');
-    userIdRef.current = localId;
-    setLibrary(loadLibrary(localId));
-    setReadingStats(loadAnalytics(localId));
-    setIsTransitioning(true);
-    setTimeout(() => {
-      navigateTo('library');
-      setIsTransitioning(false);
-    }, 300);
+  const handlePlanSelect = async (plan, billingInterval) => {
+    if (!user) {
+      requestSignIn('home');
+      return;
+    }
+    setBilling((current) => ({ ...current, loading: true, error: '' }));
+    try {
+      const { url } = await api.checkout(getToken, plan, billingInterval);
+      window.location.assign(url);
+    } catch (error) {
+      setBilling((current) => ({ ...current, loading: false, error: error.message }));
+    }
+  };
+
+  const handleManageBilling = async () => {
+    setBilling((current) => ({ ...current, loading: true, error: '' }));
+    try {
+      const { url } = await api.portal(getToken);
+      window.location.assign(url);
+    } catch (error) {
+      setBilling((current) => ({ ...current, loading: false, error: error.message }));
+    }
   };
 
   const seekToPdfWord = (wordIndex) => {
@@ -427,15 +511,35 @@ export default function App() {
     }, 500);
   };
 
+  if (staticPath) return <StaticPage path={staticPath} supportEmail={supportEmail} />;
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-amber-500/30 flex flex-col relative">
+      {!authLoaded && (
+        <div className="fixed inset-0 z-[400] grid place-items-center bg-[#050505]" role="status" aria-live="polite">
+          <div className="text-center"><div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/15 border-t-amber-500" /><p className="mt-4 text-xs uppercase tracking-[0.2em] text-white/50">Checking your session</p></div>
+        </div>
+      )}
+      {appError && <div className="fixed left-1/2 top-5 z-[250] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 rounded-xl border border-red-400/25 bg-red-950/95 px-5 py-4 text-sm text-red-100 shadow-2xl" role="alert">{appError}<button type="button" onClick={() => setAppError('')} className="float-right ml-4 font-bold" aria-label="Dismiss error">×</button></div>}
       {screen === 'home' && (
         <div
           id="landing-scroll-container"
           className={`fixed inset-0 z-[100] overflow-y-auto transition-opacity duration-400 ${isTransitioning ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           style={{ pointerEvents: isTransitioning ? 'none' : 'auto' }}
         >
-          <Landing onEnter={handleEnterLibrary} onEmailAuth={handleEmailAuth} user={user} authError={authError} loginRequestKey={loginRequestKey} />
+          <Landing
+            onEnter={handleEnterLibrary}
+            onOpenAuth={() => requestSignIn('library')}
+            onPlanSelect={handlePlanSelect}
+            onManageBilling={handleManageBilling}
+            user={user}
+            accountMenu={<AccountMenu />}
+            authError={authError}
+            billingStatus={billing.status}
+            billingLoading={billing.loading}
+            billingError={billing.error}
+            supportEmail={supportEmail}
+          />
         </div>
       )}
 
@@ -454,7 +558,7 @@ export default function App() {
         />
       )}
 
-      {authStatus !== 'loading' && screen === 'dashboard' && user && <DashboardScreen navigateTo={navigateTo} dashboardStats={dashboardStats} readingStats={readingStats} library={library} />}
+      {authLoaded && screen === 'dashboard' && user && <DashboardScreen navigateTo={navigateTo} dashboardStats={dashboardStats} readingStats={readingStats} library={library} />}
 
       {screen === 'chapters' && user && <ChaptersScreen currentBook={currentBook} chapterProgressMap={chapterProgressMap} startChapter={startChapter} navigateTo={navigateTo} />}
 

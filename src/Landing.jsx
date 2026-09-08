@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { BookOpen, ArrowRight, Check, Zap, Shield, HelpCircle, User, X, Lock, Globe, Cpu, Menu, Play, Pause, RotateCcw, Gauge, Layers3, ScanLine, Database, Activity, FileText, Eye } from 'lucide-react';
+import { BookOpen, ArrowRight, Check, Zap, Shield, HelpCircle, X, Lock, Globe, Cpu, Menu, Play, Pause, RotateCcw, Gauge, Layers3, ScanLine, Database, Activity, FileText, Eye } from 'lucide-react';
 import { Link as ScrollLink } from 'react-scroll';
+import { PRICING_PLANS } from './lib/pricing';
 
 const TechnicalGrid = () => (
   <svg className="absolute inset-0 w-full h-full opacity-[0.13] pointer-events-none" viewBox="0 0 900 520" preserveAspectRatio="none" aria-hidden="true">
@@ -49,7 +50,6 @@ const KineticDataOrb = () => {
       glyph: index % 11 === 0
     };
   }), []);
-
   return (
     <div className="kinetic-orb" aria-hidden="true">
       <svg viewBox="0 0 480 480" className="w-full h-full">
@@ -112,7 +112,6 @@ const NavLink = ({ children, targetId, delay, onNavigate }) => {
   const handleClick = () => {
     if (onNavigate) onNavigate();
   };
-
   return (
     <ScrollLink
       to={targetId}
@@ -132,7 +131,7 @@ const NavLink = ({ children, targetId, delay, onNavigate }) => {
 
 
 
-const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, color = "amber", fullWidth = false }) => {
+const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, color = "amber", fullWidth = false, disabled = false }) => {
   const colorStyles = {
     amber: "bg-amber-500/10 border-amber-500/30 text-amber-500",
     teal: "bg-teal-500/10 border-teal-500/30 text-teal-500",
@@ -141,19 +140,20 @@ const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, col
   return (
     <div className={`relative group ${fullWidth ? 'block w-full' : 'inline-block'}`}>
       <button
+        type="button"
         onClick={onClick}
+        disabled={disabled}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
-        className={`relative z-10 flex items-center gap-4 backdrop-blur-xl border ${colorStyles[color]} px-10 py-5 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase ${fullWidth ? 'w-full justify-center' : ''}`}
+        className={`relative z-10 flex items-center gap-4 backdrop-blur-xl border ${colorStyles[color]} px-6 md:px-10 py-4 md:py-5 font-bold tracking-[0.16em] transition-all duration-300 hover:bg-white/[0.08] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 text-xs uppercase ${fullWidth ? 'w-full justify-center' : ''}`}
       >
         {children}
       </button>
-      <div className={`absolute inset-0 pointer-events-none border ${colorStyles[color].split(' ')[1].replace('/30', '/10')} translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2`} />
     </div>
   );
 };
 
-export default function Landing({ onEnter = () => {}, onEmailAuth = async () => {}, user = null, authError = '', loginRequestKey = 0 }) {
+export default function Landing({ onEnter = () => {}, onOpenAuth = null, onPlanSelect = null, onManageBilling = null, user = null, accountMenu = null, authError = '', supportEmail = 'support@readimentary.app', billingStatus = null, billingLoading = false, billingError = '' }) {
   const containerRef = useRef(null);
   const mainFigureRef = useRef(null);
   const backFigureRef = useRef(null);
@@ -163,11 +163,6 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
   const [showLogin, setShowLogin] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
-  const [authBusy, setAuthBusy] = useState(false);
-  const [socialNotice, setSocialNotice] = useState('');
   const [featuresHighlighted, setFeaturesHighlighted] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState('hero');
   const [loopCharacterIndex, setLoopCharacterIndex] = useState(0);
@@ -176,10 +171,6 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
   const [sampleIndex, setSampleIndex] = useState(0);
   const [samplePlaying, setSamplePlaying] = useState(false);
   const [sampleParseProgress, setSampleParseProgress] = useState(18);
-
-  useEffect(() => {
-    if (loginRequestKey > 0) setShowLogin(true);
-  }, [loginRequestKey]);
 
   // --- Particle Data ---
   const createParticles = (count, xRange) => Array.from({ length: count }).map((_, i) => ({
@@ -198,10 +189,12 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     hero: null,      // Loop animation in hero
     features: 1,     // Blue/teal character
     pricing: 2,      // Pink character
-    faq: 0,          // Amber character
-    docs: 1          // Blue/teal character
+    signals: 0,
+    modes: 1,
+    why: 0,
+    about: 1
   }), []);
-  const sectionOrder = useMemo(() => ['hero', 'features', 'pricing', 'faq', 'docs'], []);
+  const sectionOrder = useMemo(() => ['hero', 'signals', 'modes', 'pricing', 'why', 'features', 'about'], []);
   const controlledCharacterIndex = sectionCharacterMap[activeSectionId];
   const centerCharacterIndex = controlledCharacterIndex ?? loopCharacterIndex;
   const sectionDepth = Math.max(0, sectionOrder.indexOf(activeSectionId));
@@ -405,9 +398,9 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     return () => clearInterval(interval);
   }, []);
 
-  // Section mapping: character focus follows scrolling context
+  // Section mapping: character position follows scrolling context
   useEffect(() => {
-    const sectionIds = ['hero', 'features', 'pricing', 'faq', 'docs'];
+    const sectionIds = ['hero', 'signals', 'modes', 'pricing', 'why', 'features', 'about'];
     const scrollContainer = document.getElementById('landing-scroll-container');
     const sections = sectionIds
       .map((id) => document.getElementById(id))
@@ -491,20 +484,22 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     setSampleIndex(0);
   };
 
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
-    setAuthBusy(true);
-    try {
-      await onEmailAuth({ email, password, rememberMe });
-    } catch {
-      // The parent renders the uniform API error in this modal.
-    } finally {
-      setAuthBusy(false);
+  const openAuth = () => {
+    if (onOpenAuth) {
+      onOpenAuth();
+      return;
     }
+    setShowLogin(true);
   };
 
-  const handleSocialLogin = (provider) => {
-    setSocialNotice(`${provider} authentication will be enabled when production accounts are connected.`);
+  const handlePlanSelect = (plan, interval) => {
+    if (plan.comingSoon) return;
+    if (onPlanSelect) {
+      onPlanSelect(plan.name.toLowerCase(), interval);
+      return;
+    }
+    if (user) onEnter();
+    else openAuth();
   };
 
   const highlightFeatures = () => {
@@ -519,8 +514,14 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
   ];
 
 
+  const [billingInterval, setBillingInterval] = useState('monthly');
+  const formatPrice = (amount) => Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  const supportHref = `mailto:${supportEmail}`;
+
+
+
   return (
-    <div ref={containerRef} className="relative min-h-screen bg-[#050505] overflow-x-hidden font-sans text-white scroll-smooth flex flex-col">
+    <div id="landing-scroll-container" ref={containerRef} className="relative min-h-screen bg-[#050505] overflow-x-hidden font-sans text-white scroll-smooth flex flex-col">
       <style>{animations}</style>
       <div
         className="absolute inset-0 z-0 opacity-[0.14] pointer-events-none"
@@ -552,21 +553,23 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
 
             {/* Center Side */}
             <div className="hidden md:flex items-center justify-center gap-10 flex-[2]">
-              <NavLink targetId="features" delay="0.4s" onNavigate={highlightFeatures}>Features</NavLink>
+              <NavLink targetId="signals" delay="0.3s">Signals</NavLink>
+              <NavLink targetId="modes" delay="0.4s">Modes</NavLink>
               <NavLink targetId="pricing" delay="0.5s">Pricing</NavLink>
-              <NavLink targetId="about" delay="0.6s">About</NavLink>
+              <NavLink targetId="features" delay="0.6s" onNavigate={highlightFeatures}>Features</NavLink>
             </div>
 
             {/* Right Side */}
             <div className="flex justify-end flex-1">
-              <div className="relative inline-block group">
+              <div className="relative flex items-center gap-3">
+                {accountMenu}
                 <button
-                  onClick={() => setShowLogin(true)}
+                  type="button"
+                  onClick={user ? onEnter : openAuth}
                   className="relative z-10 flex items-center gap-2 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-5 py-2 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-[9px] uppercase"
                 >
-                  GET STARTED <ArrowRight size={12} />
+                  {user ? 'OPEN LIBRARY' : 'GET STARTED'} <ArrowRight size={12} />
                 </button>
-                <div className="absolute inset-0 border border-amber-500/10 translate-x-1 translate-y-1 z-0 transition-transform duration-300 group-hover:translate-x-1.5 group-hover:translate-y-1.5" />
               </div>
             </div>
           </nav>
@@ -668,7 +671,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         </div>
 
         <div className="flex justify-center mb-12">
-          <ReadimentaryButton onClick={() => setShowLogin(true)}>
+          <ReadimentaryButton onClick={openAuth}>
             <BookOpen size={18} /> INITIALIZE<ArrowRight size={18} />
           </ReadimentaryButton>
         </div>
@@ -680,40 +683,124 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             <div key={String(hidden)} className="marquee-group" aria-hidden={hidden || undefined}>
               <span className="whitespace-nowrap"><Check size={14} className="inline text-amber-500 mr-2" /> Local-First Architecture</span>
               <span className="whitespace-nowrap"><Zap size={14} className="inline text-teal-500 mr-2" /> 600+ WPM Achievable</span>
-              <span className="whitespace-nowrap"><Shield size={14} className="inline text-pink-500 mr-2" /> Zero Data Tracking</span>
-              <span className="whitespace-nowrap"><Check size={14} className="inline text-amber-500 mr-2" /> Browser Native Engine</span>
+              <span className="whitespace-nowrap"><Shield size={14} className="inline text-pink-500 mr-2" /> PDFs Stay Local</span>
+              <span className="whitespace-nowrap"><Check size={14} className="inline text-amber-500 mr-2" /> Core Parsing Runs Locally</span>
             </div>
           ))}
         </div>
       </div>
 
+      <section id="signals" className="w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
+        <SectionHeader title="Reading Signals" subtitle="A clearer sense of value at a glance" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <article className="lg:col-span-8 relative rounded-3xl border border-white/10 bg-[#090909] overflow-hidden p-7 md:p-9 min-h-[390px]">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5 mb-8"><div><div className="flex items-center gap-2 text-[9px] tracking-[0.18em] uppercase text-teal-400 mb-3"><Activity size={13}/> Session preview</div><h3 className="text-2xl md:text-3xl font-black text-white">Performance you can see.</h3></div><div className="flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/[0.06] px-3 py-2 text-[8px] uppercase tracking-[0.15em] text-teal-400"><span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"/> Session active</div></div>
+            <div className="grid sm:grid-cols-[1fr_1.6fr] gap-7 items-end">
+              <div><div className="text-6xl md:text-7xl font-black tracking-[-0.07em] text-white">450</div><div className="text-xs tracking-[0.2em] uppercase text-amber-500 mt-2">words per minute</div><p className="text-xs leading-6 text-white/40 mt-5">A productive default for fluent nonfiction—fast enough to create momentum, controlled enough to preserve context.</p></div>
+              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4"><SignalChart value={92}/><div className="grid grid-cols-3 gap-2 mt-2 text-center"><div><b className="block text-sm text-white">01:42</b><span className="text-[8px] uppercase text-white/25">elapsed</span></div><div><b className="block text-sm text-white">734</b><span className="text-[8px] uppercase text-white/25">words</span></div><div><b className="block text-sm text-teal-400">92%</b><span className="text-[8px] uppercase text-white/25">position</span></div></div></div>
+            </div>
+          </article>
+
+          <article className="lg:col-span-4 rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.08] to-black/30 p-7 flex flex-col justify-between min-h-[390px]">
+            <div className="flex items-center justify-between"><span className="text-[9px] font-mono text-amber-500">PACE ENVELOPE</span><Gauge size={20} className="text-amber-500"/></div>
+            <div className="relative w-48 h-48 mx-auto my-5"><svg viewBox="0 0 200 200" className="w-full h-full -rotate-90"><circle cx="100" cy="100" r="76" fill="none" stroke="white" strokeOpacity=".06" strokeWidth="12"/><circle className="metric-ring" cx="100" cy="100" r="76" pathLength="1" fill="none" stroke="#f59e0b" strokeWidth="12" strokeLinecap="round" strokeDasharray=".72 .28" style={{'--ring-end':'.28'}}/></svg><div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-black text-white">300–900</span><span className="text-[9px] uppercase tracking-[0.18em] text-white/30 mt-2">WPM range</span></div></div>
+            <p className="text-xs leading-6 text-white/45">Dial down for technical density. Accelerate for review. The same focal rail supports every tier.</p>
+          </article>
+
+          <article className="lg:col-span-4 rounded-3xl border border-teal-500/20 bg-teal-500/[0.035] p-7 min-h-[245px]">
+            <ScanLine size={20} className="text-teal-400 mb-7"/><div className="text-4xl font-black text-white mb-2">100%</div><h3 className="text-sm font-bold uppercase tracking-[0.12em] text-teal-400 mb-3">Focal drift lock</h3><p className="text-xs leading-6 text-white/45">Optical word mapping keeps the recognition point fixed even as token geometry changes.</p>
+            <div className="relative mt-6 h-8 border-y border-white/[0.06]"><div className="absolute left-1/2 top-0 bottom-0 w-px bg-teal-400"/><div className="absolute left-[18%] right-[18%] top-1/2 h-px bg-gradient-to-r from-transparent via-teal-400/50 to-transparent"/></div>
+          </article>
+
+          <article className="lg:col-span-5 rounded-3xl border border-white/10 bg-white/[0.025] p-7 min-h-[245px] flex flex-col sm:flex-row gap-7 items-center">
+            <div className="shrink-0 relative w-28 h-32 rounded-xl border border-white/10 bg-black/30 flex items-center justify-center"><FileText size={34} className="text-white/25"/><div className="absolute -right-3 top-5 w-6 h-6 rounded-full bg-amber-500 text-black text-[9px] font-black flex items-center justify-center">01</div><div className="absolute -right-3 top-14 w-6 h-6 rounded-full bg-teal-400 text-black text-[9px] font-black flex items-center justify-center">12</div></div>
+            <div><div className="text-[9px] uppercase tracking-[0.18em] text-pink-400 mb-3">Dynamic ingestion</div><h3 className="text-xl font-bold text-white mb-3">Counts grow while you read.</h3><p className="text-xs leading-6 text-white/45">Page totals, word arrays, and chapter boundaries update without interrupting playback.</p></div>
+          </article>
+
+          <article className="lg:col-span-3 rounded-3xl border border-white/10 bg-black/35 p-7 min-h-[245px]">
+            <Database size={20} className="text-amber-500 mb-8"/><div className="text-4xl font-black text-white mb-2">0</div><h3 className="text-sm font-bold text-white mb-3">Cloud PDF storage</h3><p className="text-[11px] leading-5 text-white/40">Your source document remains local to the browser.</p><div className="mt-5 text-[8px] uppercase tracking-[0.14em] text-amber-500/60">IndexedDB storage</div>
+          </article>
+        </div>
+      </section>
+
+
+      <section id="modes" className="w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-9">
+          <div>
+            <div className="text-[10px] tracking-[0.24em] uppercase text-teal-400/70 font-bold mb-5">Selected reading modes</div>
+            <h2 className="text-3xl md:text-5xl font-black tracking-[-0.04em] text-white max-w-2xl leading-[1.05]">Different material. One engine that changes pace with you.</h2>
+          </div>
+          <p className="text-sm leading-6 text-white/45 max-w-sm">Four practical workflows for turning a static document into a deliberate reading session.</p>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <article className="lg:col-span-7 relative rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-[#080808] p-7 md:p-9 overflow-hidden min-h-[420px]">
+            <div className="flex items-center justify-between mb-8"><span className="text-[9px] uppercase tracking-[0.2em] font-bold text-amber-500">Deep work / 01</span><span className="text-[8px] font-mono text-white/25">45:00 BLOCK</span></div>
+            <div className="grid md:grid-cols-[1fr_150px] gap-8">
+              <div><h3 className="text-2xl md:text-3xl font-black text-white mb-4">The focused chapter sprint</h3><p className="text-sm leading-7 text-white/45">A distraction-resistant session built around one chapter, one focal rail, and a pace calibrated for sustained comprehension.</p>
+                <div className="relative mt-9 h-32 border-y border-white/[0.07] flex items-center justify-center"><div className="absolute inset-y-0 left-1/2 w-px bg-amber-500/60"/><span className="text-4xl font-serif"><i className="not-italic text-white/25">atten</i><b className="text-amber-500">t</b><i className="not-italic text-white/25">ion</i></span><div className="absolute bottom-3 left-4 text-[8px] font-mono text-white/20">ORP LOCKED</div></div>
+              </div>
+              <aside className="rounded-2xl border border-white/10 bg-black/25 p-5"><div className="text-[8px] uppercase tracking-[0.15em] text-white/25 mb-6">Session plan</div><div className="space-y-5"><div><span className="text-2xl font-black text-white">420</span><small className="block text-[8px] uppercase text-amber-500">WPM target</small></div><div><span className="text-2xl font-black text-white">01</span><small className="block text-[8px] uppercase text-white/30">Chapter</small></div><div><span className="text-2xl font-black text-teal-400">88%</span><small className="block text-[8px] uppercase text-white/30">Position marker</small></div></div></aside>
+            </div>
+          </article>
+
+          <article className="lg:col-span-5 rounded-3xl border border-teal-500/20 bg-[#07100f] overflow-hidden min-h-[420px]">
+            <div className="px-7 py-6 border-b border-teal-500/15 flex items-center justify-between"><div><span className="text-[9px] uppercase tracking-[0.2em] text-teal-400">Research / 02</span><h3 className="text-xl font-bold text-white mt-2">High-volume first pass</h3></div><FileText size={20} className="text-teal-400"/></div>
+            <div className="p-7"><p className="text-xs leading-6 text-white/45 mb-7">Build a fast mental map before returning to the passages that deserve close analysis.</p><div className="font-mono text-[10px] divide-y divide-white/[0.06] border-y border-white/[0.06]"><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.01</span><span className="text-white/60">Abstract + premise</span><span className="text-teal-400">READ</span></div><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.04</span><span className="text-white/60">Primary evidence</span><span className="text-amber-500">FLAG</span></div><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.11</span><span className="text-white/60">Counterargument</span><span className="text-white/25">QUEUE</span></div></div><div className="mt-6 flex items-center gap-2 text-[8px] uppercase tracking-[0.14em] text-teal-400"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"/> 12 pages indexed</div></div>
+          </article>
+
+          <article className="lg:col-span-5 rounded-3xl border border-pink-500/20 bg-pink-500/[0.035] p-7 md:p-8 min-h-[310px]">
+            <div className="flex gap-6 items-start"><div className="relative shrink-0 w-20 h-28"><div className="absolute inset-0 translate-x-3 -translate-y-2 rounded-lg border border-pink-500/15"/><div className="absolute inset-0 translate-x-1 -translate-y-1 rounded-lg border border-pink-500/25"/><div className="relative h-full rounded-lg bg-pink-500/10 border border-pink-500/35 flex items-center justify-center"><BookOpen size={26} className="text-pink-400"/></div></div><div><span className="text-[9px] uppercase tracking-[0.2em] text-pink-400">Learning / 03</span><h3 className="text-xl font-bold text-white mt-3 mb-3">A repeatable study rhythm</h3><p className="text-xs leading-6 text-white/45">Turn a dense reading list into daily sessions with visible chapter progress and consistent timing.</p></div></div>
+            <div className="mt-8 grid grid-cols-[auto_1fr_auto] gap-4 items-center"><span className="text-[9px] font-mono text-white/25">DAY 06</span><div className="h-2 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full w-[64%] bg-gradient-to-r from-pink-500 to-amber-500 rounded-full"/></div><span className="text-[9px] font-mono text-pink-400">64%</span></div>
+          </article>
+
+          <article className="lg:col-span-7 relative rounded-3xl border border-white/10 bg-white/[0.025] p-7 md:p-8 min-h-[310px] overflow-hidden">
+            <div className="grid sm:grid-cols-[1fr_220px] gap-7 items-center"><div><span className="text-[9px] uppercase tracking-[0.2em] text-amber-500">Review / 04</span><h3 className="text-2xl font-bold text-white mt-3 mb-4">The last-mile knowledge scan</h3><p className="text-xs leading-6 text-white/45 max-w-md">Revisit familiar material at elevated speed while the focal rail keeps attention on meaning instead of line finding.</p><div className="mt-6 flex gap-5 text-[8px] uppercase tracking-[0.14em] text-white/30"><span>Instant replay</span><span>•</span><span>Focal lock</span></div></div><div className="relative h-44"><svg viewBox="0 0 220 170" className="w-full h-full"><path d="M25 138A88 88 0 01195 138" pathLength="1" fill="none" stroke="white" strokeOpacity=".08" strokeWidth="14" strokeLinecap="round"/><path className="metric-ring" d="M25 138A88 88 0 01170 72" pathLength="1" fill="none" stroke="#f59e0b" strokeOpacity=".8" strokeWidth="14" strokeLinecap="round" strokeDasharray="1" style={{'--ring-end':'0'}}/><path className="chart-line" pathLength="1" d="M110 138l53-60" stroke="#2dd4bf" strokeWidth="2"/><circle cx="110" cy="138" r="7" fill="#2dd4bf"/></svg><div className="absolute inset-0 flex items-center justify-center pt-14"><div className="text-center"><b className="block text-3xl text-white">780</b><span className="text-[8px] uppercase tracking-[0.14em] text-white/25">WPM review</span></div></div></div></div>
+          </article>
+        </div>
+      </section>
+
       {/* --- PRICING SECTION --- */}
-      <section id="pricing" className="order-[30] w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
-        <SectionHeader title="Pricing" subtitle="Simple monthly plans · cancel anytime" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-7xl mx-auto items-stretch">
-          {[
-            { name: 'Individual', price: 15, color: 'amber', description: 'For regular reading.', features: ['Unlimited PDFs', 'RSVP reader', 'Chapter progress'] },
-            { name: 'Pro', price: 29, color: 'teal', recommended: true, description: 'For daily power users.', features: ['Everything in Individual', 'Reading analytics', 'Priority support'] },
-            { name: 'Team', price: 79, color: 'pink', description: 'For up to 5 readers.', features: ['Everything in Pro', '5 user seats', 'Shared billing'] }
-          ].map((plan) => (
+      <section id="pricing" className="w-full py-12 md:py-16 px-4 md:px-6 max-w-[1280px] mx-auto border-t border-white/5">
+        <SectionHeader title="Pricing" subtitle="Monthly or annual access" />
+        <div className="flex items-center justify-center gap-2 mb-8" role="group" aria-label="Billing interval">
+          {['monthly', 'annual'].map((option) => (
+            <button key={option} type="button" onClick={() => setBillingInterval(option)} className={`px-4 py-2 rounded-full border text-[10px] uppercase tracking-[0.18em] transition-colors ${billingInterval === option ? 'border-amber-500/50 bg-amber-500/15 text-amber-400' : 'border-white/10 text-white/45 hover:text-white'}`}>
+              {option}
+            </button>
+          ))}
+        </div>
+        {billingError && <p className="mx-auto mb-5 max-w-2xl text-center text-xs text-red-300" role="alert">{billingError}{import.meta.env.DEV && billingError.includes('configured') ? ' Add the Stripe and database server variables in .env.' : ''}</p>}
+        {user && (
+          <div className="mx-auto mb-6 flex max-w-3xl flex-col items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-5 py-4 text-center sm:flex-row sm:text-left">
+            <div>
+              <p className="text-[9px] uppercase tracking-[0.18em] text-white/35">Current plan</p>
+              <p className="mt-1 text-sm font-bold capitalize text-white">{billingStatus?.active ? `${billingStatus.subscription?.plan || 'Paid'} · ${billingStatus.subscription?.status}` : 'Free · no active subscription'}</p>
+              {billingStatus?.subscription?.current_period_end && <p className="mt-1 text-xs text-white/45">{billingStatus.subscription.cancel_at_period_end ? 'Access ends' : 'Renews'} {new Date(billingStatus.subscription.current_period_end).toLocaleDateString()}</p>}
+            </div>
+            {billingStatus?.active && onManageBilling && <button type="button" onClick={onManageBilling} disabled={billingLoading} className="rounded-xl border border-white/15 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.16em] text-white hover:bg-white/[0.05] disabled:opacity-50">Manage billing</button>}
+          </div>
+        )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-6xl mx-auto items-stretch">
+          {PRICING_PLANS.map((plan) => (
             <article key={plan.name} className={`relative rounded-3xl border p-6 md:p-7 flex flex-col bg-white/[0.025] ${plan.recommended ? 'border-teal-500/45 shadow-[0_0_60px_rgba(45,212,191,0.07)]' : 'border-white/10'}`}>
               <div className="flex items-center justify-between mb-5">
                 <span className="text-[9px] font-mono tracking-[0.18em] text-white/45">{plan.name.toUpperCase()}</span>
                 {plan.recommended && <span className="rounded-full border border-teal-500/25 bg-teal-500/10 px-3 py-1 text-[8px] uppercase tracking-[0.16em] text-teal-400">Recommended</span>}
               </div>
-              <div className="flex items-end gap-2"><span className="text-6xl font-black tracking-[-0.06em] text-white">${plan.price}</span><span className="text-[9px] uppercase tracking-[0.16em] text-white/35 mb-3">/ month</span></div>
+              <div className="flex items-end gap-2"><span className="text-5xl md:text-6xl font-black tracking-[-0.06em] text-white">${formatPrice(plan.prices[billingInterval])}</span><span className="text-[9px] uppercase tracking-[0.16em] text-white/35 mb-3">/ {billingInterval === 'monthly' ? 'month' : 'year'}</span></div>
               <p className="text-sm text-white/50 mt-4 mb-5">{plan.description}</p>
               <ul className="space-y-3 mb-6 flex-1">
                 {plan.features.map((feature) => <li key={feature} className="flex items-center gap-3 text-xs text-white/65"><Check size={14} className="text-amber-500" />{feature}</li>)}
               </ul>
-              <ReadimentaryButton fullWidth color={plan.color} onClick={() => user ? onEnter() : setShowLogin(true)}>Choose {plan.name}</ReadimentaryButton>
+              <ReadimentaryButton fullWidth color={plan.color} disabled={billingLoading || plan.comingSoon} onClick={() => handlePlanSelect(plan, billingInterval)}>{billingLoading && !plan.comingSoon ? 'Opening checkout…' : plan.cta}</ReadimentaryButton>
+              {plan.comingSoon && <p className="mt-3 text-center text-[9px] uppercase tracking-[0.14em] text-white/30">Coming soon</p>}
             </article>
           ))}
         </div>
-        <p className="mt-4 text-center text-[10px] uppercase tracking-[0.14em] text-white/30">Annual billing will include a 20% discount. Checkout is coming next.</p>
+        <p className="mt-4 text-center text-[10px] uppercase tracking-[0.14em] text-white/30">Annual pricing shown as the exact yearly total.</p>
       </section>
 
-      <section className="order-[40] w-full relative py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto overflow-hidden">
+      <section id="why" className="w-full relative py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto overflow-hidden">
         <div className="absolute left-6 right-6 top-28 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
         <div className="grid lg:grid-cols-[0.72fr_1.28fr] gap-8 lg:gap-12 items-start mb-10">
           <div className="lg:sticky lg:top-28">
@@ -741,12 +828,12 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-5 flex flex-col md:flex-row md:items-center gap-5 md:gap-10">
           <span className="text-[9px] tracking-[0.2em] uppercase text-white/30 shrink-0">Engine primitives</span>
           <div className="flex flex-wrap gap-x-8 gap-y-4 text-[10px] tracking-[0.14em] uppercase text-white/50">
-            {['PDF.js worker', 'Optimal recognition point', 'IndexedDB storage', 'Page-word mapping', 'JWT sessions'].map((item) => <span key={item} className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-teal-400" />{item}</span>)}
+            {['PDF.js worker', 'Optimal recognition point', 'IndexedDB storage', 'Page-word mapping', 'Clerk sessions'].map((item) => <span key={item} className="flex items-center gap-2"><span className="w-1 h-1 rounded-full bg-teal-400" />{item}</span>)}
           </div>
         </div>
       </section>
 
-      <section id="features" className="order-[50] w-full py-10 md:py-12 border-t border-white/5">
+      <section id="features" className="w-full py-10 md:py-12 border-t border-white/5">
         <div
           className={`relative w-full transition-all duration-500 ${
             featuresHighlighted ? 'ring-1 ring-amber-500/50 bg-amber-500/[0.03]' : ''
@@ -824,93 +911,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
 
       {/* ... (rest of sections: stats, pricing, faq, footer, modal remain identical) */}
       
-      {/* --- STATS BAR --- */}
-      <div className="order-[55] w-full bg-white/5 border-y border-white/5 py-8 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {[
-            { icon: <Lock size={20}/>, label: "Private Local Data" },
-            { icon: <Globe size={20}/>, label: "Works In Browser" },
-            { icon: <Cpu size={20}/>, label: "Fast Text Parsing" },
-            { icon: <Shield size={20}/>, label: "Progress Tracking" }
-          ].map((item, i) => (
-            <div key={i} className="flex flex-col items-center text-center gap-3">
-              <div className="text-amber-500">{item.icon}</div>
-              <span className="text-[10px] tracking-[0.2em] uppercase font-bold text-white/40">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <section className="order-[10] w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
-        <SectionHeader title="Reading Signals" subtitle="A clearer sense of value at a glance" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <article className="lg:col-span-8 relative rounded-3xl border border-white/10 bg-[#090909] overflow-hidden p-7 md:p-9 min-h-[390px]">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5 mb-8"><div><div className="flex items-center gap-2 text-[9px] tracking-[0.18em] uppercase text-teal-400 mb-3"><Activity size={13}/> Live reading telemetry</div><h3 className="text-2xl md:text-3xl font-black text-white">Performance you can see.</h3></div><div className="flex items-center gap-2 rounded-full border border-teal-500/20 bg-teal-500/[0.06] px-3 py-2 text-[8px] uppercase tracking-[0.15em] text-teal-400"><span className="w-1.5 h-1.5 bg-teal-400 rounded-full animate-pulse"/> Session active</div></div>
-            <div className="grid sm:grid-cols-[1fr_1.6fr] gap-7 items-end">
-              <div><div className="text-6xl md:text-7xl font-black tracking-[-0.07em] text-white">450</div><div className="text-xs tracking-[0.2em] uppercase text-amber-500 mt-2">words per minute</div><p className="text-xs leading-6 text-white/40 mt-5">A productive default for fluent nonfiction—fast enough to create momentum, controlled enough to preserve context.</p></div>
-              <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4"><SignalChart value={92}/><div className="grid grid-cols-3 gap-2 mt-2 text-center"><div><b className="block text-sm text-white">01:42</b><span className="text-[8px] uppercase text-white/25">elapsed</span></div><div><b className="block text-sm text-white">734</b><span className="text-[8px] uppercase text-white/25">words</span></div><div><b className="block text-sm text-teal-400">92%</b><span className="text-[8px] uppercase text-white/25">focus</span></div></div></div>
-            </div>
-          </article>
-
-          <article className="lg:col-span-4 rounded-3xl border border-amber-500/20 bg-gradient-to-b from-amber-500/[0.08] to-black/30 p-7 flex flex-col justify-between min-h-[390px]">
-            <div className="flex items-center justify-between"><span className="text-[9px] font-mono text-amber-500">PACE ENVELOPE</span><Gauge size={20} className="text-amber-500"/></div>
-            <div className="relative w-48 h-48 mx-auto my-5"><svg viewBox="0 0 200 200" className="w-full h-full -rotate-90"><circle cx="100" cy="100" r="76" fill="none" stroke="white" strokeOpacity=".06" strokeWidth="12"/><circle className="metric-ring" cx="100" cy="100" r="76" pathLength="1" fill="none" stroke="#f59e0b" strokeWidth="12" strokeLinecap="round" strokeDasharray=".72 .28" style={{'--ring-end':'.28'}}/></svg><div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-2xl font-black text-white">300–900</span><span className="text-[9px] uppercase tracking-[0.18em] text-white/30 mt-2">WPM range</span></div></div>
-            <p className="text-xs leading-6 text-white/45">Dial down for technical density. Accelerate for review. The same focal rail supports every tier.</p>
-          </article>
-
-          <article className="lg:col-span-4 rounded-3xl border border-teal-500/20 bg-teal-500/[0.035] p-7 min-h-[245px]">
-            <ScanLine size={20} className="text-teal-400 mb-7"/><div className="text-4xl font-black text-white mb-2">100%</div><h3 className="text-sm font-bold uppercase tracking-[0.12em] text-teal-400 mb-3">Focal drift lock</h3><p className="text-xs leading-6 text-white/45">Optical word mapping keeps the recognition point fixed even as token geometry changes.</p>
-            <div className="relative mt-6 h-8 border-y border-white/[0.06]"><div className="absolute left-1/2 top-0 bottom-0 w-px bg-teal-400"/><div className="absolute left-[18%] right-[18%] top-1/2 h-px bg-gradient-to-r from-transparent via-teal-400/50 to-transparent"/></div>
-          </article>
-
-          <article className="lg:col-span-5 rounded-3xl border border-white/10 bg-white/[0.025] p-7 min-h-[245px] flex flex-col sm:flex-row gap-7 items-center">
-            <div className="shrink-0 relative w-28 h-32 rounded-xl border border-white/10 bg-black/30 flex items-center justify-center"><FileText size={34} className="text-white/25"/><div className="absolute -right-3 top-5 w-6 h-6 rounded-full bg-amber-500 text-black text-[9px] font-black flex items-center justify-center">01</div><div className="absolute -right-3 top-14 w-6 h-6 rounded-full bg-teal-400 text-black text-[9px] font-black flex items-center justify-center">12</div></div>
-            <div><div className="text-[9px] uppercase tracking-[0.18em] text-pink-400 mb-3">Dynamic ingestion</div><h3 className="text-xl font-bold text-white mb-3">Counts grow while you read.</h3><p className="text-xs leading-6 text-white/45">Page totals, word arrays, and chapter boundaries update without interrupting playback.</p></div>
-          </article>
-
-          <article className="lg:col-span-3 rounded-3xl border border-white/10 bg-black/35 p-7 min-h-[245px]">
-            <Database size={20} className="text-amber-500 mb-8"/><div className="text-4xl font-black text-white mb-2">0</div><h3 className="text-sm font-bold text-white mb-3">Cloud PDF copies</h3><p className="text-[11px] leading-5 text-white/40">Your source document remains local to the browser.</p><div className="mt-5 text-[8px] uppercase tracking-[0.14em] text-amber-500/60">IndexedDB / encrypted origin</div>
-          </article>
-        </div>
-      </section>
-
-
-      <section className="order-[20] w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-9">
-          <div>
-            <div className="text-[10px] tracking-[0.24em] uppercase text-teal-400/70 font-bold mb-5">Selected reading modes</div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-[-0.04em] text-white max-w-2xl leading-[1.05]">Different material. One engine that changes pace with you.</h2>
-          </div>
-          <p className="text-sm leading-6 text-white/45 max-w-sm">Four practical workflows for turning a static document into a deliberate reading session.</p>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <article className="lg:col-span-7 relative rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] to-[#080808] p-7 md:p-9 overflow-hidden min-h-[420px]">
-            <div className="flex items-center justify-between mb-8"><span className="text-[9px] uppercase tracking-[0.2em] font-bold text-amber-500">Deep work / 01</span><span className="text-[8px] font-mono text-white/25">45:00 BLOCK</span></div>
-            <div className="grid md:grid-cols-[1fr_150px] gap-8">
-              <div><h3 className="text-2xl md:text-3xl font-black text-white mb-4">The focused chapter sprint</h3><p className="text-sm leading-7 text-white/45">A distraction-resistant session built around one chapter, one focal rail, and a pace calibrated for sustained comprehension.</p>
-                <div className="relative mt-9 h-32 border-y border-white/[0.07] flex items-center justify-center"><div className="absolute inset-y-0 left-1/2 w-px bg-amber-500/60"/><span className="text-4xl font-serif"><i className="not-italic text-white/25">atten</i><b className="text-amber-500">t</b><i className="not-italic text-white/25">ion</i></span><div className="absolute bottom-3 left-4 text-[8px] font-mono text-white/20">ORP LOCKED</div></div>
-              </div>
-              <aside className="rounded-2xl border border-white/10 bg-black/25 p-5"><div className="text-[8px] uppercase tracking-[0.15em] text-white/25 mb-6">Session plan</div><div className="space-y-5"><div><span className="text-2xl font-black text-white">420</span><small className="block text-[8px] uppercase text-amber-500">WPM target</small></div><div><span className="text-2xl font-black text-white">01</span><small className="block text-[8px] uppercase text-white/30">Chapter</small></div><div><span className="text-2xl font-black text-teal-400">88%</span><small className="block text-[8px] uppercase text-white/30">Focus score</small></div></div></aside>
-            </div>
-          </article>
-
-          <article className="lg:col-span-5 rounded-3xl border border-teal-500/20 bg-[#07100f] overflow-hidden min-h-[420px]">
-            <div className="px-7 py-6 border-b border-teal-500/15 flex items-center justify-between"><div><span className="text-[9px] uppercase tracking-[0.2em] text-teal-400">Research / 02</span><h3 className="text-xl font-bold text-white mt-2">High-volume first pass</h3></div><FileText size={20} className="text-teal-400"/></div>
-            <div className="p-7"><p className="text-xs leading-6 text-white/45 mb-7">Build a fast mental map before returning to the passages that deserve close analysis.</p><div className="font-mono text-[10px] divide-y divide-white/[0.06] border-y border-white/[0.06]"><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.01</span><span className="text-white/60">Abstract + premise</span><span className="text-teal-400">READ</span></div><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.04</span><span className="text-white/60">Primary evidence</span><span className="text-amber-500">FLAG</span></div><div className="grid grid-cols-[42px_1fr_auto] py-4"><span className="text-white/20">P.11</span><span className="text-white/60">Counterargument</span><span className="text-white/25">QUEUE</span></div></div><div className="mt-6 flex items-center gap-2 text-[8px] uppercase tracking-[0.14em] text-teal-400"><span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"/> 12 pages indexed</div></div>
-          </article>
-
-          <article className="lg:col-span-5 rounded-3xl border border-pink-500/20 bg-pink-500/[0.035] p-7 md:p-8 min-h-[310px]">
-            <div className="flex gap-6 items-start"><div className="relative shrink-0 w-20 h-28"><div className="absolute inset-0 translate-x-3 -translate-y-2 rounded-lg border border-pink-500/15"/><div className="absolute inset-0 translate-x-1 -translate-y-1 rounded-lg border border-pink-500/25"/><div className="relative h-full rounded-lg bg-pink-500/10 border border-pink-500/35 flex items-center justify-center"><BookOpen size={26} className="text-pink-400"/></div></div><div><span className="text-[9px] uppercase tracking-[0.2em] text-pink-400">Learning / 03</span><h3 className="text-xl font-bold text-white mt-3 mb-3">A repeatable study rhythm</h3><p className="text-xs leading-6 text-white/45">Turn a dense reading list into daily sessions with visible chapter progress and consistent timing.</p></div></div>
-            <div className="mt-8 grid grid-cols-[auto_1fr_auto] gap-4 items-center"><span className="text-[9px] font-mono text-white/25">DAY 06</span><div className="h-2 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full w-[64%] bg-gradient-to-r from-pink-500 to-amber-500 rounded-full"/></div><span className="text-[9px] font-mono text-pink-400">64%</span></div>
-          </article>
-
-          <article className="lg:col-span-7 relative rounded-3xl border border-white/10 bg-white/[0.025] p-7 md:p-8 min-h-[310px] overflow-hidden">
-            <div className="grid sm:grid-cols-[1fr_220px] gap-7 items-center"><div><span className="text-[9px] uppercase tracking-[0.2em] text-amber-500">Review / 04</span><h3 className="text-2xl font-bold text-white mt-3 mb-4">The last-mile knowledge scan</h3><p className="text-xs leading-6 text-white/45 max-w-md">Revisit familiar material at elevated speed while the focal rail keeps attention on meaning instead of line finding.</p><div className="mt-6 flex gap-5 text-[8px] uppercase tracking-[0.14em] text-white/30"><span>Instant replay</span><span>•</span><span>Focal lock</span></div></div><div className="relative h-44"><svg viewBox="0 0 220 170" className="w-full h-full"><path d="M25 138A88 88 0 01195 138" pathLength="1" fill="none" stroke="white" strokeOpacity=".08" strokeWidth="14" strokeLinecap="round"/><path className="metric-ring" d="M25 138A88 88 0 01170 72" pathLength="1" fill="none" stroke="#f59e0b" strokeOpacity=".8" strokeWidth="14" strokeLinecap="round" strokeDasharray="1" style={{'--ring-end':'0'}}/><path className="chart-line" pathLength="1" d="M110 138l53-60" stroke="#2dd4bf" strokeWidth="2"/><circle cx="110" cy="138" r="7" fill="#2dd4bf"/></svg><div className="absolute inset-0 flex items-center justify-center pt-14"><div className="text-center"><b className="block text-3xl text-white">780</b><span className="text-[8px] uppercase tracking-[0.14em] text-white/25">WPM review</span></div></div></div></div>
-          </article>
-        </div>
-      </section>
-
-      <section id="about" className="order-[58] w-full border-t border-white/[0.06] px-4 md:px-6 py-10 md:py-12">
+      <section id="about" className="w-full border-t border-white/[0.06] px-4 md:px-6 py-10 md:py-12">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-[1.35fr_1fr] gap-8 lg:gap-14 items-start">
           <div>
             <div className="text-[10px] tracking-[0.24em] uppercase text-amber-500/80 font-bold mb-5">About Readimentary</div>
@@ -922,14 +923,14 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
               <span className="text-[9px] uppercase tracking-[0.18em] text-teal-400">Contact</span>
               <h3 className="text-lg font-bold text-white mt-3">Questions or feedback?</h3>
               <p className="text-xs leading-6 text-white/45 mt-2 mb-5">Tell us what you are reading and where the experience can improve.</p>
-              <a href="mailto:support@readimentary.app" className="text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors">support@readimentary.app</a>
+              <a href={supportHref} className="text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors">{supportEmail}</a>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
               <span className="text-[9px] uppercase tracking-[0.18em] text-pink-400">Quick links</span>
               <div className="mt-4 flex flex-col gap-3 text-xs text-white/55">
                 <ScrollLink to="features" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Features</ScrollLink>
                 <ScrollLink to="pricing" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Pricing</ScrollLink>
-                <button type="button" onClick={() => setShowLogin(true)} className="text-left hover:text-white">Get started</button>
+                <button type="button" onClick={openAuth} className="text-left hover:text-white">Get started</button>
               </div>
             </div>
           </div>
@@ -937,115 +938,26 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       </section>
 
       {/* Footer */}
-      <footer className="order-[60] w-full border-t border-white/[0.06] bg-black px-4 md:px-6 py-8">
+      <footer className="w-full border-t border-white/[0.06] bg-black px-4 md:px-6 py-8">
         <div className="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr] gap-8 py-3">
           <div><div className="flex items-center gap-3"><div className="w-6 h-6 border border-amber-500/40 flex items-center justify-center"><div className="w-2 h-2 bg-amber-500" /></div><span className="text-[10px] font-bold tracking-[0.32em] uppercase text-white/55">Readimentary</span></div><p className="mt-4 text-xs leading-6 text-white/35 max-w-xs">A local-first RSVP reader for focused PDF reading and review.</p></div>
-          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Product</h3><div className="flex flex-col gap-3 text-xs text-white/50"><ScrollLink to="features" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Features</ScrollLink><ScrollLink to="pricing" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Pricing</ScrollLink><button type="button" onClick={() => setShowLogin(true)} className="text-left hover:text-white">Get started</button></div></div>
-          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Company</h3><div className="flex flex-col gap-3 text-xs text-white/50"><ScrollLink to="about" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">About</ScrollLink><a href="mailto:support@readimentary.app" className="hover:text-white">Contact</a></div></div>
-          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Support</h3><div className="flex flex-col gap-3 text-xs text-white/50"><a href="mailto:support@readimentary.app?subject=Readimentary%20Support" className="hover:text-white">Help</a><a href="mailto:support@readimentary.app?subject=Privacy%20Question" className="hover:text-white">Privacy questions</a><a href="mailto:support@readimentary.app?subject=Billing%20Question" className="hover:text-white">Billing questions</a></div></div>
+          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Product</h3><div className="flex flex-col gap-3 text-xs text-white/50"><ScrollLink to="features" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Features</ScrollLink><ScrollLink to="pricing" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">Pricing</ScrollLink><button type="button" onClick={openAuth} className="text-left hover:text-white">Get started</button></div></div>
+          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Company</h3><div className="flex flex-col gap-3 text-xs text-white/50"><ScrollLink to="about" containerId="landing-scroll-container" smooth duration={550} offset={-90} className="cursor-pointer hover:text-white">About</ScrollLink><a href="/contact" className="hover:text-white">Contact</a></div></div>
+          <div><h3 className="text-[9px] uppercase tracking-[0.18em] text-white/30 mb-4">Support</h3><div className="flex flex-col gap-3 text-xs text-white/50"><a href="/support" className="hover:text-white">Support</a><a href="/privacy" className="hover:text-white">Privacy</a><a href="/terms" className="hover:text-white">Terms</a></div></div>
         </div>
         <div className="max-w-7xl mx-auto mt-7 pt-5 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3"><p className="text-[9px] text-white/25 tracking-[0.16em] uppercase">© 2026 Readimentary. All rights reserved.</p><p className="text-[8px] text-white/20 tracking-[0.16em] uppercase">RSVP reading engine</p></div>
       </footer>
 
-      {/* Login Modal */}
-      {showLogin && (
+      {/* Neutral auth handoff modal */}
+      {showLogin && !onOpenAuth && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowLogin(false)} />
-          <div className="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto bg-zinc-900 border border-white/10 p-6 md:p-8 shadow-2xl rounded-2xl">
-            <button
-              onClick={() => setShowLogin(false)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
-              aria-label="Close login modal"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">Get started</h2>
-              <p className="text-[10px] text-white/40 tracking-[0.15em] uppercase mt-3">
-                One account flow for new and returning readers
-              </p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-3 mb-6">
-              <button type="button" onClick={() => handleSocialLogin('Google')} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-semibold text-white hover:bg-white/[0.08] hover:border-white/20 transition-colors">
-                <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 01-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.8 5.8 0 01-5.4-4H3.3v2.6A10 10 0 0012 22z"/><path fill="#FBBC05" d="M6.6 14.1a6 6 0 010-4.2V7.3H3.3a10 10 0 000 9.4l3.3-2.6z"/><path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0012 2a10 10 0 00-8.7 5.3l3.3 2.6a5.8 5.8 0 015.4-4z"/></svg>
-                Google
-              </button>
-              <button type="button" onClick={() => handleSocialLogin('Apple')} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-black px-4 py-3 text-xs font-semibold hover:bg-white/90 transition-colors">
-                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true"><path d="M17.1 12.5c0-2.4 2-3.6 2.1-3.7a4.6 4.6 0 00-3.6-2c-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9A4.9 4.9 0 004.4 9.3c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.4-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.5a11 11 0 001.4-2.9 4.1 4.1 0 01-3.1-4.1zM14.6 5.2A4.2 4.2 0 0015.6 2a4.5 4.5 0 00-3 1.5 4 4 0 00-1 3.1 3.7 3.7 0 003-1.4z"/></svg>
-                Apple
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 mb-6"><div className="h-px flex-1 bg-white/10"/><span className="text-[9px] uppercase tracking-[0.18em] text-white/25">or continue with email</span><div className="h-px flex-1 bg-white/10"/></div>
-
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-[10px] text-white/50 tracking-[0.2em] uppercase font-bold">
-                  Email
-                </label>
-                <div className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 focus-within:border-amber-500/40 transition-colors">
-                  <User size={14} className="text-amber-500/70" />
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-[10px] text-white/50 tracking-[0.2em] uppercase font-bold">
-                  Password
-                </label>
-                <div className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 focus-within:border-amber-500/40 transition-colors">
-                  <Lock size={14} className="text-amber-500/70" />
-                  <input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="w-full bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[10px] tracking-[0.15em] uppercase">
-                <label className="inline-flex items-center gap-2 text-white/50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="accent-amber-500"
-                  />
-                  Remember me
-                </label>
-                <span className="text-white/25">Local preview mode</span>
-              </div>
-
-              <div className="relative inline-block group w-full pt-2">
-                <button
-                  type="submit"
-                  disabled={authBusy}
-                  className="relative z-10 w-full flex items-center justify-center gap-3 backdrop-blur-xl border border-amber-500/30 bg-amber-500/10 text-amber-500 px-6 py-4 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase"
-                >
-                  {authBusy ? 'Opening…' : 'Continue'} <ArrowRight size={14} />
-                </button>
-                <div className="absolute inset-0 border border-amber-500/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
-              </div>
-            </form>
-
+          <div className="relative w-full max-w-md bg-zinc-900 border border-white/10 p-6 md:p-8 shadow-2xl rounded-2xl">
+            <button onClick={() => setShowLogin(false)} className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors" aria-label="Close auth modal"><X size={20} /></button>
+            <h2 className="text-xl font-bold tracking-[0.2em] text-amber-500 uppercase">Get started</h2>
+            <p className="mt-4 text-sm leading-6 text-white/50">Account access is handled by the application shell. Connect an auth provider with <code className="text-amber-400">onOpenAuth</code> to open sign in from this landing page.</p>
             {authError && <p role="alert" className="mt-4 text-xs text-red-400 leading-relaxed">{authError}</p>}
-            {socialNotice && <p role="status" className="mt-4 text-xs text-amber-400/80 leading-relaxed">{socialNotice}</p>}
-
-            <p className="mt-6 text-[9px] text-white/30 tracking-[0.12em] uppercase leading-relaxed">New here or returning? Use the same Get Started flow. Preview credentials are not verified or sent to a server.</p>
+            <a href="/support" className="mt-6 inline-flex text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors">Need help?</a>
           </div>
         </div>
       )}

@@ -12,17 +12,6 @@ export const createDefaultAnalytics = () => ({
   dailyWords: {}
 });
 
-export const getUserId = () => {
-  let userId = localStorage.getItem('rsvp_userId');
-  if (!userId) {
-    userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem('rsvp_userId', userId);
-  }
-  return userId;
-};
-
-export const getUserEmail = () => localStorage.getItem('rsvp_userEmail') || null;
-
 export const saveSettings = (settings) => localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 
 export const loadSettings = () => {

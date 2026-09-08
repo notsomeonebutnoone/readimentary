@@ -143,6 +143,7 @@ export default function ChaptersScreen({ currentBook, chapterProgressMap, startC
 
   const chapters = currentBook.chapters || [];
   const isProcessing = currentBook.status === 'processing';
+  const hasParsingError = currentBook.status === 'error';
   const isLegacyFallback = chapters.length === 1
     && String(chapters[0]?.id || '') === 'ch-0'
     && String(chapters[0]?.title || '').trim().toLowerCase() === 'start of document';
@@ -174,14 +175,20 @@ export default function ChaptersScreen({ currentBook, chapterProgressMap, startC
           <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[9px] tracking-[0.14em] uppercase text-white/45">
             <span className={`w-1.5 h-1.5 rounded-full ${currentBook.status === 'processing' ? 'bg-teal-400 animate-pulse' : 'bg-amber-500'}`} />
             {currentBook.status === 'processing'
-              ? `Parsing page ${currentBook.parsedPages || 1} of ${currentBook.totalPages || '…'} · ${(currentBook.words?.length || 0).toLocaleString()} words ready`
+              ? `${currentBook.parsedPages ? `Parsing page ${currentBook.parsedPages}${currentBook.totalPages ? ` of ${currentBook.totalPages}` : ''}` : 'Preparing document'} · ${(currentBook.words?.length || 0).toLocaleString()} words ready`
               : `${(currentBook.words?.length || 0).toLocaleString()} words · ${currentBook.totalPages || currentBook.parsedPages || '—'} pages ready`}
           </div>
         </div>
 
         {isProcessing && <ChapterParsingScene currentBook={currentBook} />}
 
-        {!isProcessing && !hasDetectedChapters ? (
+        {hasParsingError ? (
+          <div className="mx-auto max-w-3xl rounded-3xl border border-red-400/20 bg-red-500/[0.06] p-7 md:p-10" role="alert">
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-red-300">Parsing error</span>
+            <h3 className="mt-3 text-xl font-bold text-white md:text-2xl">We couldn’t finish reading this PDF.</h3>
+            <p className="mt-3 text-sm leading-7 text-white/55">{currentBook.parsingError || 'The document could not be parsed. Try another PDF or import it again.'}</p>
+          </div>
+        ) : !isProcessing && !hasDetectedChapters ? (
           <div className="max-w-3xl mx-auto rounded-3xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.08] via-white/[0.025] to-transparent p-7 md:p-10">
             <div className="flex flex-col sm:flex-row gap-6 sm:items-start">
               <div className="w-12 h-12 shrink-0 rounded-2xl border border-amber-500/25 bg-amber-500/10 flex items-center justify-center">
@@ -189,7 +196,7 @@ export default function ChaptersScreen({ currentBook, chapterProgressMap, startC
               </div>
               <div className="flex-1">
                 <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-amber-500/80">Chapter detection unavailable</span>
-                <h3 className="text-xl md:text-2xl font-bold text-white mt-3">We couldn’t identify chapter headings in this PDF.</h3>
+                <h3 className="text-xl md:text-2xl font-bold text-white mt-3">We couldn’t detect chapter headings in this document.</h3>
                 <p className="text-sm leading-7 text-white/50 mt-3 max-w-2xl">The document was imported successfully. This can happen with scanned files, image-based pages, or headings that are not encoded as recognizable text. You can still read the complete document from the beginning.</p>
                 <button type="button" onClick={readFullDocument} disabled={!currentBook.words?.length} className="mt-7 inline-flex items-center gap-3 border border-amber-500/30 bg-amber-500/10 px-6 py-4 text-xs font-bold tracking-[0.16em] uppercase text-amber-500 hover:bg-amber-500/15 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                   <BookOpen size={16} /> Read full document <ArrowRight size={14} />
@@ -211,7 +218,12 @@ export default function ChaptersScreen({ currentBook, chapterProgressMap, startC
                 }`}
               >
                 <div className="flex items-center gap-6 mb-4">
-                  <div onClick={() => startChapter(ch)} className="flex-1 cursor-pointer flex items-center gap-6 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => startChapter(ch)}
+                    className="flex-1 cursor-pointer flex items-center gap-6 min-w-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0c0c] rounded-xl"
+                    aria-label={`Open ${ch.title}`}
+                  >
                     <span className="text-white/30 font-black text-xl tracking-[0.1em] uppercase transition-colors group-hover:text-amber-500/50 flex-shrink-0">
                       {(idx + 1).toString().padStart(2, '0')}
                     </span>
@@ -221,8 +233,8 @@ export default function ChaptersScreen({ currentBook, chapterProgressMap, startC
                     >
                       {ch.title}
                     </span>
-                    {isCompleted && <span className="text-amber-500/60 text-xs font-bold flex-shrink-0 ml-2">✓</span>}
-                  </div>
+                    {isCompleted && <span className="text-amber-500/60 text-xs font-bold flex-shrink-0 ml-2" aria-label="Completed">✓</span>}
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-3 pl-8">

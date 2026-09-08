@@ -59,7 +59,7 @@
 | Library | Upload/select books and manage your reading collection | ✅ Ready |
 | Chapters | Auto-detected chapter list with progress tracking | ✅ Ready |
 | Reader | RSVP playback with ORP focus and WPM controls | ✅ Ready |
-| AI Helpers | Summary / flashcard stubs for chapter context | ⚠️ Prototype |
+| Account and billing | Clerk sessions and Stripe subscription APIs when configured | ⚙️ Setup required |
 
 ## 🧰 Tech Stack
 
@@ -69,6 +69,9 @@
 | Styling | Tailwind CSS 4 |
 | PDF Processing | `pdfjs-dist` / PDF.js |
 | UI Utilities | `lucide-react`, `react-scroll` |
+| Authentication | Clerk React and Backend SDKs |
+| Billing | Stripe Checkout, webhooks, and Customer Portal |
+| Entitlements | Managed Postgres |
 
 ## 🗂️ Project Structure
 
@@ -138,52 +141,36 @@ npm run lint
 
 ## 🔒 Data & Privacy
 
-Readimentary currently stores user data locally in your browser:
+Readimentary stores reading data locally in your browser:
 
 - `localStorage`:
-  - reader settings
-  - library metadata
-  - mock local user ID
+  - reader settings, library metadata, and progress scoped to the Clerk user ID
 - `IndexedDB`:
   - uploaded PDF blobs (for reload persistence)
 
-PDF bytes remain local (IndexedDB in the browser). Account identity, book-slot metadata,
-and paid entitlement are handled by the API; passwords are scrypt-hashed and sessions
-are signed JWTs stored in HttpOnly, SameSite cookies.
+PDF bytes remain in browser IndexedDB and PDF text extraction runs in the browser. Clerk
+handles account identity and session verification. Stripe and managed Postgres handle
+server-authoritative subscription records when those services are configured. Review the
+draft Privacy Policy before production launch.
 
 ## API, authentication, and billing
 
-Copy `.env.example` to `.env` in your process environment, configure provider/Stripe
-credentials, then run the frontend and API in separate terminals:
+Copy `.env.example` to `.env`, configure a Clerk development instance, Stripe test mode,
+and a development Postgres database, then run the frontend and API in separate terminals:
 
 ```bash
 npm run dev
 npm run dev:api
 ```
 
-The API uses Node's built-in SQLite module and requires Node.js 22.5 or newer.
+Production HTTP handlers live under root `api/` for Vercel Functions. They verify Clerk
+session tokens, create controlled recurring Stripe Checkout sessions, open Customer Portal
+sessions, and update Postgres only from verified Stripe webhooks. The Checkout success URL
+never grants access by itself.
 
-Register these OAuth callbacks:
-
-- Google: `http://localhost:8787/api/auth/callback/google`
-- Apple: `http://localhost:8787/api/auth/callback/apple`
-
-Forward Stripe events to `http://localhost:8787/api/webhooks/stripe`. The API accepts
-`checkout.session.completed` and `invoice.paid`; Stripe signature verification is
-required. The free entitlement is enforced transactionally at book registration:
-one book per account unless `users.is_paid` is true.
-
----
-
-## 🤖 AI Integration Notes
-
-The app includes Gemini helper functions for chapter summary/flashcards in `src/App.jsx`.
-If you plan to use this in production, do not keep API keys in client code.
-
-- Current placeholder key location: `src/App.jsx` (search for `const apiKey`).
-- Recommended approach:
-  - move AI calls to a backend service
-  - keep real keys in server-side environment variables
+Run `npm run db:migrate` after setting `DATABASE_URL`. See
+[`docs/AUTH_AND_BILLING_SETUP.md`](docs/AUTH_AND_BILLING_SETUP.md) for Clerk social login,
+Stripe products, webhook forwarding, Postgres, Vercel, test-mode, and launch instructions.
 
 ---
 
@@ -191,7 +178,9 @@ If you plan to use this in production, do not keep API keys in client code.
 
 - Chapter detection is heuristic-based and may need manual tuning for some PDFs.
 - Complex PDFs (scanned pages, unusual layouts) may extract text imperfectly.
-- Production deployments must provide strong JWT, OAuth, Apple client-secret, and Stripe secrets.
+- Clerk, Google, Apple, Stripe, Postgres, and Vercel dashboard configuration is required before production authentication or billing can be considered active.
+- Team billing is intentionally unavailable until organizations and seat management exist.
+- Privacy Policy and Terms of Service routes are explicit drafts pending final legal review.
 - A nested git entry named `readimentary` exists in repo history (mode `160000`), which may behave like a submodule depending on your clone state.
 
 ---
@@ -214,14 +203,17 @@ From `package.json`:
 - `npm run build` -> create production build
 - `npm run preview` -> preview production build
 - `npm run lint` -> run ESLint
+- `npm test` -> run the Vitest suite
+- `npm run db:migrate` -> apply Postgres migrations
 
 ## 🛣️ Roadmap
 
 - [x] Local PDF upload and chapter parsing
 - [x] RSVP reader with adjustable WPM and ORP
 - [x] Persisted local library and reading progress
-- [ ] Server-backed authentication
-- [ ] Backend AI integration (secure API keys)
+- [x] Clerk authentication integration and protected application areas
+- [x] Stripe subscription API and Postgres entitlement architecture
+- [ ] Complete external dashboard configuration and production acceptance tests
 - [ ] Multi-device sync
 
 ## 📄 License

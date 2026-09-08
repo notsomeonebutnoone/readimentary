@@ -16,6 +16,16 @@ export const tokenizeText = (text) =>
       orp: calculateORP(word)
     }));
 
+const createChapterId = (index, title) => {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48);
+
+  return `ch-${index}-${slug || 'untitled'}`;
+};
+
 export const detectChaptersFromText = (text) => {
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
   const chapters = [];
@@ -26,7 +36,7 @@ export const detectChaptersFromText = (text) => {
   lines.forEach((line) => {
     if (chapterRegexes.some((r) => r.test(line)) || (line === line.toUpperCase() && line.length < 30)) {
       chapters.push({
-        id: `ch-${chapters.length}-${Math.random()}`,
+        id: createChapterId(chapters.length, line),
         title: line,
         startIndex: wordCursor
       });
