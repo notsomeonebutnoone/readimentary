@@ -33,5 +33,6 @@ export const api = {
   registerBook: (book) => request('/api/books', { method: 'POST', body: JSON.stringify(book) }),
   updateBook: (id, progress) => request(`/api/books/${id}`, { method: 'PATCH', body: JSON.stringify(progress) }),
   deleteBook: (id) => request(`/api/books/${id}`, { method: 'DELETE' }),
-  checkout: () => request('/api/billing/checkout', { method: 'POST' })
+  plans: () => request('/api/billing/plans'),
+  checkout: (plan) => request('/api/billing/checkout', { method: 'POST', body: JSON.stringify({ plan }) })
 };

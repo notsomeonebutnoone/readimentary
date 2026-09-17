@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { URL, URLSearchParams } from 'node:url';
 import { db, publicUser, findOrCreateOAuthUser } from './database.mjs';
 import { hashPassword, signJwt, verifyJwt, verifyPassword, verifyStripeSignature } from './security.mjs';
+import { PLANS, DEFAULT_PLAN_ID, findPlan } from '../shared/plans.mjs';
 
 const port = Number(process.env.API_PORT || 8787);
 const appUrl = process.env.APP_URL || 'http://localhost:5173';
@@ -114,16 +115,34 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'PATCH' && url.pathname.startsWith('/api/books/')) { const user=requireUser(req,res); if(!user)return; const id=url.pathname.split('/').pop(); const b=JSON.parse((await readBody(req)).toString()||'{}'); db.prepare('UPDATE books SET status=?,total_words=?,parsed_pages=?,total_pages=? WHERE id=? AND user_id=?').run(b.status||'processing',b.totalWords||0,b.parsedPages||0,b.totalPages||0,id,user.id); return send(res,200,{ok:true}); }
     if (req.method === 'DELETE' && url.pathname.startsWith('/api/books/')) { const user=requireUser(req,res); if(!user)return; db.prepare('DELETE FROM books WHERE id=? AND user_id=?').run(url.pathname.split('/').pop(),user.id); return send(res,200,{ok:true}); }
+    if (req.method === 'GET' && url.pathname === '/api/billing/plans') return send(res, 200, { plans: PLANS, checkoutEnabled: Boolean(process.env.STRIPE_SECRET_KEY) });
     if (req.method === 'POST' && url.pathname === '/api/billing/checkout') {
       const user=requireUser(req,res); if(!user)return;
-      if (user.is_paid) return send(res,409,{error:{code:'ALREADY_PAID',message:'Lifetime access is already active.'}});
-      const lineItem = process.env.STRIPE_PRICE_ID
-        ? {'line_items[0][price]':process.env.STRIPE_PRICE_ID}
-        : {'line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':'1000','line_items[0][price_data][product_data][name]':'Readimentary Lifetime Access'};
-      const session=await stripeRequest('checkout/sessions',{'mode':'payment',...lineItem,'line_items[0][quantity]':'1','success_url':`${appUrl}?checkout=success`,'cancel_url':`${appUrl}?checkout=cancelled`,'client_reference_id':user.id,'customer_email':user.email,'metadata[user_id]':user.id});
+      if (user.is_paid) return send(res,409,{error:{code:'ALREADY_PAID',message:'A paid plan is already active on this account.'}});
+      if (!process.env.STRIPE_SECRET_KEY) return send(res,503,{error:{code:'BILLING_NOT_CONFIGURED',message:'Stripe billing is not configured on this deployment.'}});
+      const plan = findPlan(JSON.parse((await readBody(req)).toString()||'{}').plan || DEFAULT_PLAN_ID);
+      if (!plan) return send(res,400,{error:{code:'UNKNOWN_PLAN',message:'Choose one of the available plans.'}});
+      const configuredPrice = process.env[`STRIPE_PRICE_${plan.id.toUpperCase()}`] || (plan.id === DEFAULT_PLAN_ID ? process.env.STRIPE_PRICE_ID : '');
+      const lineItem = configuredPrice
+        ? {'line_items[0][price]':configuredPrice}
+        : {'line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':String(plan.priceUsd*100),'line_items[0][price_data][recurring][interval]':'month','line_items[0][price_data][product_data][name]':`Readimentary ${plan.name}`};
+      const session=await stripeRequest('checkout/sessions',{'mode':'subscription',...lineItem,'line_items[0][quantity]':'1','success_url':`${appUrl}?checkout=success`,'cancel_url':`${appUrl}?checkout=cancelled`,'client_reference_id':user.id,'customer_email':user.email,'metadata[user_id]':user.id,'metadata[plan]':plan.id,'subscription_data[metadata][user_id]':user.id,'subscription_data[metadata][plan]':plan.id});
       return send(res,200,{url:session.url});
     }
-    if (req.method === 'POST' && ['/api/webhooks/stripe','/api/stripe/webhook'].includes(url.pathname)) { const raw=(await readBody(req)).toString(); if(!verifyStripeSignature(raw,req.headers['stripe-signature'],process.env.STRIPE_WEBHOOK_SECRET)) return send(res,400,{error:{code:'INVALID_SIGNATURE',message:'Invalid Stripe signature.'}}); const event=JSON.parse(raw); if(['checkout.session.completed','invoice.paid'].includes(event.type)){const object=event.data.object; const userId=object.client_reference_id||object.metadata?.user_id; if(userId)db.prepare('UPDATE users SET is_paid=1,stripe_customer_id=COALESCE(?,stripe_customer_id) WHERE id=?').run(object.customer||null,userId);} return send(res,200,{received:true}); }
+    if (req.method === 'POST' && ['/api/webhooks/stripe','/api/stripe/webhook'].includes(url.pathname)) {
+      const raw=(await readBody(req)).toString();
+      if(!verifyStripeSignature(raw,req.headers['stripe-signature'],process.env.STRIPE_WEBHOOK_SECRET)) return send(res,400,{error:{code:'INVALID_SIGNATURE',message:'Invalid Stripe signature.'}});
+      const event=JSON.parse(raw); const object=event.data.object;
+      if(['customer.subscription.deleted','customer.subscription.paused'].includes(event.type)) db.prepare('UPDATE users SET is_paid=0,plan=NULL WHERE stripe_subscription_id=?').run(object.id);
+      if(['checkout.session.completed','invoice.paid','customer.subscription.updated'].includes(event.type)){
+        const metadata={...(object.subscription_details?.metadata||{}),...(object.metadata||{})};
+        const userId=object.client_reference_id||metadata.user_id;
+        const subscriptionId=typeof object.subscription==='string'?object.subscription:(event.type.startsWith('customer.subscription')?object.id:null);
+        const active=!event.type.startsWith('customer.subscription')||['active','trialing'].includes(object.status);
+        if(userId) db.prepare('UPDATE users SET is_paid=?,plan=COALESCE(?,plan),stripe_customer_id=COALESCE(?,stripe_customer_id),stripe_subscription_id=COALESCE(?,stripe_subscription_id) WHERE id=?').run(active?1:0,metadata.plan||null,object.customer||null,subscriptionId,userId);
+      }
+      return send(res,200,{received:true});
+    }
     return send(res,404,{error:{code:'NOT_FOUND',message:'Route not found.'}});
   } catch (error) { console.error(error); return send(res,500,{error:{code:'INTERNAL_ERROR',message:error.message||'Unexpected server error.'}}); }
 });
