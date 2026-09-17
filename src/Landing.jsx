@@ -153,7 +153,20 @@ const ReadimentaryButton = ({ children, onClick, onMouseEnter, onMouseLeave, col
   );
 };
 
-export default function Landing({ onEnter = () => {}, onEmailAuth = async () => {}, user = null, authError = '', loginRequestKey = 0 }) {
+export default function Landing({
+  onEnter = () => {},
+  onEmailAuth = async () => {},
+  onOAuth = () => {},
+  onSelectPlan = () => {},
+  providers = { google: false, apple: false },
+  plans = [],
+  checkoutEnabled = false,
+  checkoutBusy = false,
+  billingNotice = '',
+  user = null,
+  authError = '',
+  loginRequestKey = 0
+}) {
   const containerRef = useRef(null);
   const mainFigureRef = useRef(null);
   const backFigureRef = useRef(null);
@@ -167,7 +180,6 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
-  const [socialNotice, setSocialNotice] = useState('');
   const [featuresHighlighted, setFeaturesHighlighted] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState('hero');
   const [loopCharacterIndex, setLoopCharacterIndex] = useState(0);
@@ -503,8 +515,16 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
     }
   };
 
-  const handleSocialLogin = (provider) => {
-    setSocialNotice(`${provider} authentication will be enabled when production accounts are connected.`);
+  const handlePlanClick = (planId) => {
+    if (!user) {
+      setShowLogin(true);
+      return;
+    }
+    if (user.isPaid) {
+      onEnter();
+      return;
+    }
+    onSelectPlan(planId);
   };
 
   const highlightFeatures = () => {
@@ -691,26 +711,27 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
       <section id="pricing" className="order-[30] w-full py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto border-t border-white/5">
         <SectionHeader title="Pricing" subtitle="Simple monthly plans · cancel anytime" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-7xl mx-auto items-stretch">
-          {[
-            { name: 'Individual', price: 15, color: 'amber', description: 'For regular reading.', features: ['Unlimited PDFs', 'RSVP reader', 'Chapter progress'] },
-            { name: 'Pro', price: 29, color: 'teal', recommended: true, description: 'For daily power users.', features: ['Everything in Individual', 'Reading analytics', 'Priority support'] },
-            { name: 'Team', price: 79, color: 'pink', description: 'For up to 5 readers.', features: ['Everything in Pro', '5 user seats', 'Shared billing'] }
-          ].map((plan) => (
-            <article key={plan.name} className={`relative rounded-3xl border p-6 md:p-7 flex flex-col bg-white/[0.025] ${plan.recommended ? 'border-teal-500/45 shadow-[0_0_60px_rgba(45,212,191,0.07)]' : 'border-white/10'}`}>
+          {plans.map((plan) => (
+            <article key={plan.id} className={`relative rounded-3xl border p-6 md:p-7 flex flex-col bg-white/[0.025] ${plan.recommended ? 'border-teal-500/45 shadow-[0_0_60px_rgba(45,212,191,0.07)]' : 'border-white/10'}`}>
               <div className="flex items-center justify-between mb-5">
                 <span className="text-[9px] font-mono tracking-[0.18em] text-white/45">{plan.name.toUpperCase()}</span>
                 {plan.recommended && <span className="rounded-full border border-teal-500/25 bg-teal-500/10 px-3 py-1 text-[8px] uppercase tracking-[0.16em] text-teal-400">Recommended</span>}
               </div>
-              <div className="flex items-end gap-2"><span className="text-6xl font-black tracking-[-0.06em] text-white">${plan.price}</span><span className="text-[9px] uppercase tracking-[0.16em] text-white/35 mb-3">/ month</span></div>
+              <div className="flex items-end gap-2"><span className="text-6xl font-black tracking-[-0.06em] text-white">${plan.priceUsd}</span><span className="text-[9px] uppercase tracking-[0.16em] text-white/35 mb-3">/ month</span></div>
               <p className="text-sm text-white/50 mt-4 mb-5">{plan.description}</p>
               <ul className="space-y-3 mb-6 flex-1">
                 {plan.features.map((feature) => <li key={feature} className="flex items-center gap-3 text-xs text-white/65"><Check size={14} className="text-amber-500" />{feature}</li>)}
               </ul>
-              <ReadimentaryButton fullWidth color={plan.color} onClick={() => user ? onEnter() : setShowLogin(true)}>Choose {plan.name}</ReadimentaryButton>
+              <ReadimentaryButton fullWidth color={plan.color} onClick={() => handlePlanClick(plan.id)}>
+                {user?.isPaid ? 'Open workspace' : checkoutBusy ? 'Opening checkout…' : `Choose ${plan.name}`}
+              </ReadimentaryButton>
             </article>
           ))}
         </div>
-        <p className="mt-4 text-center text-[10px] uppercase tracking-[0.14em] text-white/30">Annual billing will include a 20% discount. Checkout is coming next.</p>
+        <p className="mt-4 text-center text-[10px] uppercase tracking-[0.14em] text-white/30">
+          {checkoutEnabled ? 'Secure checkout and billing are handled by Stripe.' : 'Stripe checkout activates once billing keys are configured on the API.'}
+        </p>
+        {billingNotice && <p role="status" className="mt-3 text-center text-xs text-amber-400/80">{billingNotice}</p>}
       </section>
 
       <section className="order-[40] w-full relative py-10 md:py-12 px-4 md:px-6 max-w-[1440px] mx-auto overflow-hidden">
@@ -968,11 +989,11 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3 mb-6">
-              <button type="button" onClick={() => handleSocialLogin('Google')} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-semibold text-white hover:bg-white/[0.08] hover:border-white/20 transition-colors">
+              <button type="button" onClick={() => onOAuth('google')} disabled={!providers.google} title={providers.google ? 'Continue with Google' : 'Google sign-in is not configured'} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-semibold text-white hover:bg-white/[0.08] hover:border-white/20 transition-colors">
                 <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 01-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.4z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1a5.8 5.8 0 01-5.4-4H3.3v2.6A10 10 0 0012 22z"/><path fill="#FBBC05" d="M6.6 14.1a6 6 0 010-4.2V7.3H3.3a10 10 0 000 9.4l3.3-2.6z"/><path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0012 2a10 10 0 00-8.7 5.3l3.3 2.6a5.8 5.8 0 015.4-4z"/></svg>
                 Google
               </button>
-              <button type="button" onClick={() => handleSocialLogin('Apple')} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-black px-4 py-3 text-xs font-semibold hover:bg-white/90 transition-colors">
+              <button type="button" onClick={() => onOAuth('apple')} disabled={!providers.apple} title={providers.apple ? 'Continue with Apple' : 'Apple sign-in is not configured'} className="flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white text-black px-4 py-3 text-xs font-semibold hover:bg-white/90 transition-colors">
                 <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true"><path d="M17.1 12.5c0-2.4 2-3.6 2.1-3.7a4.6 4.6 0 00-3.6-2c-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9A4.9 4.9 0 004.4 9.3c-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.5 1.3 0 1.8-.8 3.4-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.2 3.1-2.5a11 11 0 001.4-2.9 4.1 4.1 0 01-3.1-4.1zM14.6 5.2A4.2 4.2 0 0015.6 2a4.5 4.5 0 00-3 1.5 4 4 0 00-1 3.1 3.7 3.7 0 003-1.4z"/></svg>
                 Apple
               </button>
@@ -1027,7 +1048,7 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
                   />
                   Remember me
                 </label>
-                <span className="text-white/25">Local preview mode</span>
+                <span className="text-white/25">Encrypted session</span>
               </div>
 
               <div className="relative inline-block group w-full pt-2">
@@ -1043,9 +1064,8 @@ export default function Landing({ onEnter = () => {}, onEmailAuth = async () => 
             </form>
 
             {authError && <p role="alert" className="mt-4 text-xs text-red-400 leading-relaxed">{authError}</p>}
-            {socialNotice && <p role="status" className="mt-4 text-xs text-amber-400/80 leading-relaxed">{socialNotice}</p>}
 
-            <p className="mt-6 text-[9px] text-white/30 tracking-[0.12em] uppercase leading-relaxed">New here or returning? Use the same Get Started flow. Preview credentials are not verified or sent to a server.</p>
+            <p className="mt-6 text-[9px] text-white/30 tracking-[0.12em] uppercase leading-relaxed">New here or returning? Use the same Get Started flow. Passwords need at least 8 characters and your session is a signed JWT in an HttpOnly cookie.</p>
           </div>
         </div>
       )}

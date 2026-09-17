@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, Loader2, Book, Trash2, ArrowRight, LayoutDashboard } from 'lucide-react';
+import { Upload, Loader2, Book, Trash2, ArrowRight, LayoutDashboard, Sparkles, LogOut } from 'lucide-react';
 import ReadimentaryButton from '../components/app/ReadimentaryButton';
 
 export default function LibraryScreen({
@@ -12,7 +12,12 @@ export default function LibraryScreen({
   onFileUpload,
   library,
   onBookClick,
-  onDeleteBook
+  onDeleteBook,
+  user = null,
+  billingNotice = '',
+  checkoutBusy = false,
+  onUpgrade = () => {},
+  onSignOut = () => {}
 }) {
   return (
     <div className={`min-h-screen bg-[#050505] transition-opacity duration-400 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
@@ -50,6 +55,32 @@ export default function LibraryScreen({
               <div className="absolute inset-0 border border-amber-500/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
             </div>
 
+            {!user?.isPaid && (
+              <div className="relative inline-block group">
+                <button
+                  onClick={onUpgrade}
+                  disabled={checkoutBusy}
+                  className="relative z-10 flex items-center gap-3 backdrop-blur-xl border border-teal-500/30 bg-teal-500/10 text-teal-400 px-8 py-4 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase disabled:opacity-50"
+                  title="Upgrade with Stripe"
+                >
+                  {checkoutBusy ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                  UPGRADE
+                </button>
+                <div className="absolute inset-0 border border-teal-500/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
+              </div>
+            )}
+
+            <div className="relative inline-block group">
+              <button
+                onClick={onSignOut}
+                className="relative z-10 flex items-center gap-3 backdrop-blur-xl border border-white/15 bg-white/[0.04] text-white/70 px-6 py-4 font-bold tracking-[0.2em] transition-all duration-300 hover:-translate-x-1 hover:-translate-y-1 active:translate-x-0 active:translate-y-0 text-xs uppercase"
+                title="Sign out"
+              >
+                <LogOut size={16} />
+              </button>
+              <div className="absolute inset-0 border border-white/10 translate-x-1.5 translate-y-1.5 z-0 transition-transform duration-300 group-hover:translate-x-2 group-hover:translate-y-2" />
+            </div>
+
             <div className="relative inline-block group">
               <button
                 onClick={onHomeClick}
@@ -68,7 +99,27 @@ export default function LibraryScreen({
           <h2 className="text-3xl font-bold tracking-[0.4em] text-white mb-4 uppercase">Library</h2>
           <div className="w-24 h-[1px] bg-amber-500 mx-auto mb-6" />
           <p className="text-white/40 text-[10px] tracking-[0.3em] uppercase">Your Document Collection</p>
+          {user && (
+            <p className="mt-4 text-[10px] tracking-[0.25em] uppercase text-white/35">
+              {user.email} · {user.isPaid ? `${user.plan || 'paid'} plan` : 'free plan · one book included'}
+            </p>
+          )}
         </div>
+
+        {billingNotice && (
+          <div role="status" className="mb-10 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-teal-500/25 bg-teal-500/[0.06] px-6 py-5">
+            <p className="text-xs text-white/70 leading-6">{billingNotice}</p>
+            {!user?.isPaid && (
+              <button
+                onClick={onUpgrade}
+                disabled={checkoutBusy}
+                className="shrink-0 border border-teal-500/40 bg-teal-500/10 text-teal-300 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] transition-colors hover:bg-teal-500/20 disabled:opacity-50"
+              >
+                {checkoutBusy ? 'Opening checkout…' : 'Upgrade with Stripe'}
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="space-y-4">
           {library.length === 0 ? (

@@ -8,6 +8,8 @@ import SettingsModal from './components/app/SettingsModal';
 import { ensurePdfJsLoaded } from './lib/pdfEngine';
 import { parsePdfProgressively } from './lib/progressivePdfParser';
 import { savePdfBlob, loadPdfBlob, deletePdfBlob } from './lib/pdfBlobStore';
+import { api } from './lib/apiClient';
+import { PLANS, DEFAULT_PLAN_ID } from '../shared/plans.mjs';
 import {
   getUserId,
   loadSettings,
@@ -34,8 +36,12 @@ export default function App() {
   const [readingStats, setReadingStats] = useState(createDefaultAnalytics());
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState('');
-  const [authStatus, setAuthStatus] = useState('unauthenticated');
+  const [authStatus, setAuthStatus] = useState('loading');
   const [loginRequestKey, setLoginRequestKey] = useState(0);
+  const [providers, setProviders] = useState({ email: true, google: false, apple: false });
+  const [billing, setBilling] = useState({ plans: PLANS, checkoutEnabled: false });
+  const [billingNotice, setBillingNotice] = useState('');
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   const [wpm, setWpm] = useState(350);
   const [fontSize, setFontSize] = useState(56);
@@ -89,6 +95,20 @@ export default function App() {
     }
   };
 
+  const adoptAccount = (account, { enterLibrary = false } = {}) => {
+    setUser(account);
+    setAuthStatus('authenticated');
+    userIdRef.current = account.id;
+    setLibrary(loadLibrary(account.id));
+    setReadingStats(loadAnalytics(account.id));
+    if (!enterLibrary) return;
+    setIsTransitioning(true);
+    setTimeout(() => {
+      navigateTo('library');
+      setIsTransitioning(false);
+    }, 300);
+  };
+
   useEffect(() => {
     ensurePdfJsLoaded().catch(() => {});
 
@@ -101,6 +121,22 @@ export default function App() {
 
   useEffect(() => {
     window.history.replaceState({ screen: 'home' }, '', window.location.pathname);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth') === 'error') setAuthError('That sign-in provider could not verify your account. Try again.');
+    if (params.get('checkout') === 'success') setBillingNotice('Payment received. Your plan unlocks as soon as Stripe confirms it.');
+    if (params.get('checkout') === 'cancelled') setBillingNotice('Checkout was cancelled. Your account is unchanged.');
+    if (params.has('auth') || params.has('checkout')) window.history.replaceState({ screen: 'home' }, '', window.location.pathname);
+
+    let cancelled = false;
+    api.providers().then(({ providers: available }) => !cancelled && setProviders(available)).catch(() => {});
+    api.plans().then((catalog) => !cancelled && setBilling({ plans: catalog.plans || PLANS, checkoutEnabled: Boolean(catalog.checkoutEnabled) })).catch(() => {});
+    api.me()
+      .then(({ user: account }) => !cancelled && adoptAccount(account))
+      .catch(() => !cancelled && setAuthStatus('unauthenticated'));
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -250,14 +286,19 @@ export default function App() {
     }
     const file = e.target.files?.[0];
     if (!file) return;
+    const bookId = crypto.randomUUID?.() || Date.now().toString();
+    const title = file.name.replace(/\.pdf$/i, '');
     setIsImporting(true);
+    if (!user.isLocal && !(await registerBookSlot(bookId, title))) {
+      setIsImporting(false);
+      if (e.target) e.target.value = '';
+      return;
+    }
     try {
       const arrayBuffer = await file.arrayBuffer();
       const bufferForViewer = arrayBuffer.slice(0);
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       const pdfUrl = URL.createObjectURL(blob);
-      const bookId = crypto.randomUUID?.() || Date.now().toString();
-      const title = file.name.replace(/\.pdf$/i, '');
       await savePdfBlob(bookId, blob).catch(() => {});
       let opened = false;
       const applySnapshot = (snapshot, final = false) => {
@@ -282,6 +323,9 @@ export default function App() {
         }
       });
       applySnapshot(result, true);
+      if (!user.isLocal) {
+        await api.updateBook(bookId, { status: 'ready', totalWords: result.words.length, parsedPages: result.totalPages || 0, totalPages: result.totalPages || 0 }).catch(() => {});
+      }
     } catch (err) {
       console.error('PDF error:', err);
       setAuthError(err.message || 'The PDF could not be imported.');
@@ -307,9 +351,28 @@ export default function App() {
     navigateTo('chapters');
   };
 
+  const registerBookSlot = async (bookId, title) => {
+    try {
+      await api.registerBook({ id: bookId, title });
+      return true;
+    } catch (error) {
+      if (error.code === 'PAYMENT_REQUIRED') {
+        setBillingNotice(error.message);
+        return false;
+      }
+      if (error.code === 'UNAUTHENTICATED') {
+        setAuthError('Your session expired. Sign in again to keep importing.');
+        await handleSignOut();
+        return false;
+      }
+      return error.code === 'API_UNAVAILABLE';
+    }
+  };
+
   const deleteBook = (e, bookId) => {
     e.stopPropagation();
     setLibrary((prev) => prev.filter((b) => b.id !== bookId));
+    if (!user?.isLocal) api.deleteBook(bookId).catch(() => {});
     deletePdfBlob(bookId).catch(() => {});
     if (currentBook?.id === bookId) {
       setCurrentBook(null);
@@ -393,20 +456,65 @@ export default function App() {
     }, 400);
   };
 
-  const handleEmailAuth = async ({ email }) => {
+  const handleEmailAuth = async ({ email, password }) => {
     setAuthError('');
-    const localId = getUserId();
-    const localUser = { id: localId, email: email || 'local-preview@readimentary.app', isLocal: true, isPaid: false, tier: 'preview' };
-    setUser(localUser);
-    setAuthStatus('authenticated');
-    userIdRef.current = localId;
-    setLibrary(loadLibrary(localId));
-    setReadingStats(loadAnalytics(localId));
-    setIsTransitioning(true);
-    setTimeout(() => {
-      navigateTo('library');
-      setIsTransitioning(false);
-    }, 300);
+    try {
+      let session;
+      try {
+        session = await api.register(email, password);
+      } catch (error) {
+        if (error.code !== 'EMAIL_EXISTS') throw error;
+        session = await api.login(email, password);
+      }
+      adoptAccount(session.user, { enterLibrary: true });
+    } catch (error) {
+      if (error.code !== 'API_UNAVAILABLE') {
+        setAuthError(error.message);
+        throw error;
+      }
+      setAuthError('Accounts are offline, so this session runs in local preview mode.');
+      adoptAccount({ id: getUserId(), email: email || 'local-preview@readimentary.app', isLocal: true, isPaid: false, tier: 'preview' }, { enterLibrary: true });
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (!user?.isLocal) await api.logout().catch(() => {});
+    setUser(null);
+    setAuthStatus('unauthenticated');
+    userIdRef.current = null;
+    setLibrary([]);
+    setCurrentBook(null);
+    setWords([]);
+    setReadingStats(createDefaultAnalytics());
+    navigateTo('home');
+  };
+
+  const handleOAuth = (provider) => {
+    if (!providers[provider]) {
+      setAuthError(`${provider === 'google' ? 'Google' : 'Apple'} sign-in is not configured on this deployment.`);
+      return;
+    }
+    window.location.href = api.oauthUrl(provider);
+  };
+
+  const handleUpgrade = async (planId = DEFAULT_PLAN_ID) => {
+    if (!user) {
+      setLoginRequestKey((key) => key + 1);
+      return;
+    }
+    if (user.isLocal) {
+      setBillingNotice('Connect the Readimentary API to start a paid plan.');
+      return;
+    }
+    setBillingNotice('');
+    setCheckoutBusy(true);
+    try {
+      const { url } = await api.checkout(planId);
+      window.location.href = url;
+    } catch (error) {
+      setBillingNotice(error.message);
+      setCheckoutBusy(false);
+    }
   };
 
   const seekToPdfWord = (wordIndex) => {
@@ -435,7 +543,20 @@ export default function App() {
           className={`fixed inset-0 z-[100] overflow-y-auto transition-opacity duration-400 ${isTransitioning ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
           style={{ pointerEvents: isTransitioning ? 'none' : 'auto' }}
         >
-          <Landing onEnter={handleEnterLibrary} onEmailAuth={handleEmailAuth} user={user} authError={authError} loginRequestKey={loginRequestKey} />
+          <Landing
+            onEnter={handleEnterLibrary}
+            onEmailAuth={handleEmailAuth}
+            onOAuth={handleOAuth}
+            onSelectPlan={handleUpgrade}
+            providers={providers}
+            plans={billing.plans}
+            checkoutEnabled={billing.checkoutEnabled}
+            checkoutBusy={checkoutBusy}
+            billingNotice={billingNotice}
+            user={user}
+            authError={authError}
+            loginRequestKey={loginRequestKey}
+          />
         </div>
       )}
 
@@ -451,6 +572,11 @@ export default function App() {
           library={library}
           onBookClick={handleBookSelect}
           onDeleteBook={deleteBook}
+          user={user}
+          billingNotice={billingNotice}
+          checkoutBusy={checkoutBusy}
+          onUpgrade={() => handleUpgrade()}
+          onSignOut={handleSignOut}
         />
       )}
 

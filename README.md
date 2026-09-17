@@ -169,9 +169,22 @@ Register these OAuth callbacks:
 - Apple: `http://localhost:8787/api/auth/callback/apple`
 
 Forward Stripe events to `http://localhost:8787/api/webhooks/stripe`. The API accepts
-`checkout.session.completed` and `invoice.paid`; Stripe signature verification is
-required. The free entitlement is enforced transactionally at book registration:
-one book per account unless `users.is_paid` is true.
+`checkout.session.completed`, `invoice.paid`, `customer.subscription.updated`,
+`customer.subscription.deleted`, and `customer.subscription.paused`; Stripe signature
+verification is required. The free entitlement is enforced transactionally at book
+registration: one book per account unless `users.is_paid` is true.
+
+Plans live in `shared/plans.mjs` and are served by `GET /api/billing/plans`, so the
+landing page pricing cards and Checkout use the same catalog. `POST /api/billing/checkout`
+takes `{ plan }` and opens a monthly Stripe subscription; set `STRIPE_PRICE_INDIVIDUAL`,
+`STRIPE_PRICE_PRO`, or `STRIPE_PRICE_TEAM` to bill against existing Stripe prices instead
+of the inline price data.
+
+The frontend restores its session from `GET /api/auth/me` on load, signs in through the
+Get Started modal (register, falling back to login for known emails), uses the Google and
+Apple buttons when those providers are configured, and starts Checkout from the pricing
+cards or the library Upgrade button. If the API cannot be reached the app falls back to
+the local preview account so reading still works offline.
 
 ---
 
@@ -220,7 +233,7 @@ From `package.json`:
 - [x] Local PDF upload and chapter parsing
 - [x] RSVP reader with adjustable WPM and ORP
 - [x] Persisted local library and reading progress
-- [ ] Server-backed authentication
+- [x] Server-backed authentication
 - [ ] Backend AI integration (secure API keys)
 - [ ] Multi-device sync
 

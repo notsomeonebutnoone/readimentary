@@ -12,6 +12,7 @@ db.exec(`
     id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT,
     provider TEXT NOT NULL DEFAULT 'email', provider_id TEXT,
     is_paid INTEGER NOT NULL DEFAULT 0, stripe_customer_id TEXT,
+    plan TEXT, stripe_subscription_id TEXT,
     created_at INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS books (
@@ -23,9 +24,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS books_user_id ON books(user_id);
 `);
 
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map((column) => column.name);
+for (const column of ['plan TEXT', 'stripe_subscription_id TEXT']) {
+  if (!userColumns.includes(column.split(' ')[0])) db.exec(`ALTER TABLE users ADD COLUMN ${column}`);
+}
+
 export const publicUser = (user) => user && ({
   id: user.id, email: user.email, provider: user.provider,
-  isPaid: Boolean(user.is_paid), tier: user.is_paid ? 'paid' : 'free'
+  isPaid: Boolean(user.is_paid), tier: user.is_paid ? 'paid' : 'free', plan: user.plan || null
 });
 
 export function findOrCreateOAuthUser({ email, provider, providerId }) {
